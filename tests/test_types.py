@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from wgmod_research.domain import types as t
 
 
@@ -21,3 +22,15 @@ def test_model_defaults_empty_ticks():
                                 fill_spendable=0, fill_earned=0, ticks=[])
     assert m.ticks == []
     assert m.mode == t.Mode.TECH_TREE
+
+
+def test_snapshot_list_defaults_are_independent():
+    a = t.VehicleSnapshot(tier=6, is_elite=False, vehicle_xp=0, free_xp=0)
+    b = t.VehicleSnapshot(tier=6, is_elite=False, vehicle_xp=0, free_xp=0)
+    assert a.tech_unlocks == []
+    assert a.field_mod_steps == []
+    assert a.tierxi_nodes == []
+    assert a.elite_milestones == []
+    # distinct instances must not share the same default list object
+    a.tech_unlocks.append("x")
+    assert b.tech_unlocks == []
