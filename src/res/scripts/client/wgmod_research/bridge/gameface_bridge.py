@@ -26,9 +26,12 @@ COUI = "coui://gui/gameface/mods/drizzer14/WGModResearch"
 # and the dev REPL can drive refreshes without poking module-private state.
 _active = None
 
-# Strong reference to the onChanged handler. WG's Event holds handlers WEAKLY
-# (see Event.WeakMethodProxy), so a handler with no strong ref is GC'd and never
-# fires. This module lives in sys.modules, so a global ref here keeps it alive.
+# Our onChanged handler. g_currentVehicle.onChanged is a list-based Event that
+# stores STRONG refs to its delegates -- but WoT tears down and rebuilds the
+# hangar space on battle entry/exit, repopulating that list with WG's own
+# presenters while dropping ours. So subscribing once is not enough; we must
+# re-arm on every mount. We keep a module-global ref to the same function object
+# so the membership check below stays stable across re-arms.
 _listener = None
 
 
@@ -41,12 +44,23 @@ def _on_vehicle_changed(*args, **kwargs):
 
 
 def install_vehicle_listener():
-    """Subscribe to vehicle-selection changes (idempotent)."""
+    """Ensure our handler is subscribed to vehicle-selection changes.
+
+    Self-healing and idempotent: re-adds our handler iff it is not currently in
+    g_currentVehicle.onChanged. Safe to call on every hangar mount -- the battle
+    exit teardown drops our delegate, and this restores it. We check actual list
+    membership rather than a 'did we ever subscribe' flag, which was the bug:
+    the flag stayed set while the event had silently lost our handler.
+    """
     global _listener
-    if _listener is not None:
-        return
-    _listener = _on_vehicle_changed
-    g_currentVehicle.onChanged += _listener
+    if _listener is None:
+        _listener = _on_vehicle_changed
+    try:
+        if _listener not in g_currentVehicle.onChanged:
+            g_currentVehicle.onChanged += _listener
+            LOG_NOTE("[wgmod] vehicle listener (re)armed")
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
 
 
 class TickVM(ViewModel):

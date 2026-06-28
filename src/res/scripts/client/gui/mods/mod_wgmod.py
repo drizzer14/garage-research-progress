@@ -28,6 +28,10 @@ def _install():
     def _onLoading(self, *args, **kwargs):
         _orig_onLoading(self, *args, **kwargs)
         try:
+            # Re-arm on every mount: the battle-exit hangar teardown rebuilds the
+            # onChanged delegate list with WG's own presenters but drops ours, so
+            # a once-only subscription stops firing after the first battle.
+            bridge.install_vehicle_listener()
             rvm = bridge.attach(self.getViewModel())
             bridge.push(rvm, host_vm=self.getViewModel())
         except Exception:
@@ -36,8 +40,8 @@ def _install():
     P._onLoading = _onLoading
     P._wgmod_patched = True
 
-    # Refresh on vehicle change. The bridge owns the subscription and keeps a
-    # strong ref (WG's Event is weak-ref based, so a transient handler is GC'd).
+    # Arm once now (for the install that happens while already in the hangar);
+    # _onLoading re-arms on every subsequent mount.
     bridge.install_vehicle_listener()
     LOG_NOTE("[%s] v%s installed (sub-view inject + data)" % (MOD_NAME, MOD_VERSION))
 
