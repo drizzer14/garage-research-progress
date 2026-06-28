@@ -36,6 +36,16 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
+    /* shadow hugs the icon's alpha (drop-shadow, not box-shadow) so it reads
+       against bright hangar backdrops, matching the label's text-shadow. */
+    filter: drop-shadow(0 1rem 3rem rgba(0, 0, 0, 0.9))
+            drop-shadow(0 0 2rem rgba(0, 0, 0, 0.7));
+}
+
+/* COMPLETE state shows the elite badge here, which already has a shadow baked
+   into the asset -- don't double it up. */
+#wgmod-root.wg-complete .wg-cat-icon {
+    filter: none;
 }
 
 #wgmod-root .wg-label {
@@ -43,8 +53,10 @@
     font-weight: 700;
     letter-spacing: 1rem;
     text-transform: uppercase;
-    color: #b2afab;
-    text-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.8);
+    /* primary parchment (was secondary #b2afab) -- lighter so the heading reads
+       clearly against bright hangar backdrops. */
+    color: #ede6d9;
+    text-shadow: 0 1rem 4rem rgba(0, 0, 0, 0.9), 0 0 2rem rgba(0, 0, 0, 0.6);
 }
 
 /* upgrades count (pick-one field-mod steps) -- inline with the heading, e.g.
@@ -58,12 +70,57 @@
     text-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.8);
 }
 
+/* Track: flat dark channel with a TWO-TONE frame -- a dark outer border, then a
+   lighter inner border (drawn by the ::after overlay) whose color the segment
+   notches share. Plus the native inner glow and a pronounced OUTER drop shadow so
+   the whole bar lifts off the 3-D hangar scene behind it. */
 #wgmod-root .wg-track {
     position: relative;
     height: 13rem;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1rem solid #7e7b68;                       /* native bar frame */
-    box-shadow: inset 0 0 1rem rgba(255, 255, 190, 0.3);  /* native inner glow */
+    /* Empty channel = the SAME tone as the outer border, so unfilled zones (and,
+       via the notches' color-burn against this near-black backdrop, the notches +
+       inner border over them) all read as one seamless black frame. */
+    background: rgba(0, 0, 0, 0.75);
+    border: 2rem solid rgba(0, 0, 0, 0.75);           /* black outer frame, slightly see-through */
+    box-shadow:
+        inset 0 0 1rem rgba(255, 255, 190, 0.3),      /* native inner glow */
+        0 3rem 8rem rgba(0, 0, 0, 0.75);              /* lift off the hangar */
+}
+
+/* Inner border + dense segment notches, light-gray (#888) BLENDED with color-burn so
+   each one burns into whatever color is under it -- an intense, saturated darken
+   that takes on the underlying hue (a deep saturated tan over the free-XP fill,
+   a darker tone over the light combat-XP fill) rather than a flat overlay.
+   The notches run the whole bar like the team-HP / battle-pass chapter bars,
+   built the way the client's own bars do it
+   (EditableProgress / VehicleExperience): a SINGLE one-tile gradient repeated via
+   background-size + background-repeat -- NOT repeating-linear-gradient, whose
+   per-period rounding made the spacing drift. Each 3rem tile (the native
+   VehicleExperience divider period) is a thin mark + gap, so every notch is
+   pixel-identical. Above the fills, below our data ticks. */
+#wgmod-root .wg-track::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    pointer-events: none;
+    box-sizing: border-box;
+    mix-blend-mode: color-burn;             /* burn notches into the fill colors */
+    border: 1rem solid #888888;             /* inner frame, mixes in */
+    /* Tile = a 0.9rem mark (30% of 3rem) + a 2.1rem gap. Offset the pattern right
+       by exactly one gap width (2.1rem) so the FIRST notch sits a full inter-notch
+       gap in from the inner border -- otherwise the leading gap is short and the
+       spacing looks uneven against the border. */
+    background-image: linear-gradient(
+        90deg,
+        #888888 0%, #888888 30%,
+        transparent 30%, transparent 100%);
+    background-repeat: repeat no-repeat;
+    background-position: 2.1rem 50%;
+    background-size: 3rem 100%;
 }
 
 #wgmod-root .wg-fill {
@@ -72,15 +129,18 @@
     bottom: 0;
 }
 
-/* vehicle (combat) XP fills in the native "done" green -- WoT's own XP-progress
-   color -- then free XP stacks on top in its native currency tan. */
+/* Flat fills, like the client's reusable EditableProgress bar (its fill is a
+   plain background-color, not a gradient -- no glossy sheen). Vehicle (combat) XP
+   fills in its true in-game currency color -- the light combat-experience tone
+   #dce0e0 (--color-currency-combat-experience); free XP stacks on top in its
+   native currency tan. */
 #wgmod-root .wg-fill-veh {
-    background: #64ba21;
+    background: #dce0e0;
     opacity: 1;
 }
 #wgmod-root .wg-fill-free {
     background: #ecca9d;
-    opacity: 0.92;
+    opacity: 0.95;
 }
 
 /* COMPLETE state: a full bar in the native "done" green. */
@@ -95,6 +155,7 @@
     bottom: -3rem;
     left: 0;
     right: 0;
+    z-index: 2;                 /* above the segment-notch overlay (::after) */
 }
 
 /* ticks poke above/below the track so they stay readable over the light fill.
@@ -108,7 +169,7 @@
     margin-left: -1rem;
     background: #b2afab;
     opacity: 0.7;
-    box-shadow: 0 0 1rem rgba(0, 0, 0, 0.7);          /* keep edges defined */
+    box-shadow: 0 0 1rem #888888;          /* keep edges defined */
 }
 
 /* affordable (and unlocked): bright primary, thicker -- stands out against the
@@ -128,7 +189,7 @@
     margin-left: -1rem;
     background: #8e867d;
     opacity: 0.45;
-    box-shadow: 0 0 1rem rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 1rem #888888;
 }
 
 /* Category icon (real in-game art) hangs centered below each tick. Rendered via
@@ -148,6 +209,9 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
+    /* drop shadow hugs the icon's alpha (not its box) so the glyph reads against
+       the bright fill -- box-shadow would draw a rectangle. */
+    filter: drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
 }
 /* vehicle (next-tank) uses the framed tech-tree icon (~160x100, 1.6:1) -- give
    it a larger box so the tank reads, contain keeps it fully framed. */
@@ -167,11 +231,14 @@
     transform: translateX(-50%);
     width: 18rem;
     height: 20rem;
-    background: #ecca9d;
+    background: #ecca9d;        /* flat currency tan, matching the fill */
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     display: flex;
     align-items: center;
     justify-content: center;
+    /* drop shadow follows the hexagon's clipped silhouette (box-shadow ignores
+       clip-path); lifts the badge off the bar. */
+    filter: drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
 }
 #wgmod-root .wg-tick-hex span {
     font-family: "PFDINMax", sans-serif;
