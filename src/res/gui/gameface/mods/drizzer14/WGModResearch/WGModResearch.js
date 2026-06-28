@@ -58,12 +58,15 @@ function render(model) {
     const ticksEl = root.querySelector(".wg-ticks");
 
     if (mode === "complete" || sMax <= sMin) {
+        root.className = "wg-complete";
         label.textContent = "Fully researched";
+        vehEl.style.left = "0%";
         vehEl.style.width = "100%";
         freeEl.style.width = "0%";
         ticksEl.innerHTML = "";
         return;
     }
+    root.className = "";
 
     label.textContent = mode === "field_mods" ? "Field Modifications" : "Research";
 
