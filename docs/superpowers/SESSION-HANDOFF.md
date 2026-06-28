@@ -55,11 +55,14 @@ docs/superpowers/research/decompiled-findings.md   # verified EU symbols
 1. **Verify live refresh** (immediate, above) and the full mode matrix (graceful
    degradation if a read fails).
 2. **Visual polish** (Task: design system): game Gameface fonts/colors; real hover
-   **tooltips** (name + XP); category **icons**; position/size. Owner decision:
-   ticks should **also show locked (prereqs-unmet)** items, not just affordability —
-   so propagate `UnlockItem.prereqs_met` → `Tick` → `TickVM` → JS and style locked
-   ticks distinctly (currently `Tick` has no `prereqs_met` field; the techtree
-   resolver drops it).
+   **tooltips** (name + XP); category **icons**; position/size.
+   - DONE (`7d3fe8c`, verified in-game on the Lago): locked (prereqs-unmet) ticks.
+     `UnlockItem.prereqs_met` → `Tick.locked` → `TickVM "locked"` → JS `wg-locked`
+     (muted gray, overrides category + affordable). Field mods carry no prereq info
+     so stay unlocked.
+   - Owner DROPPED the "stable full-scale / completed-base bar" idea (ticks staying
+     put as you progress); keep the current remaining-only view. Don't revisit unless
+     re-raised.
 3. **Finalize packaging & docs** (Task): `meta.xml` name/id (consider
    `com.drizzer14.research_progress` / "Research Progress"); declare OpenWG Gameface
    as a required dependency in README; deprecate `build/deploy_dev.py` (loose
