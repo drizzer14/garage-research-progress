@@ -59,7 +59,9 @@ def build_snapshot():
         elite_next_xp=prestige["elite_next_xp"],
         elite_grades=prestige["elite_grades"],
         elite_rewards=prestige["elite_rewards"],
-        elite_level_xp=prestige["elite_level_xp"])
+        # .get() so a future missing prestige key degrades gracefully instead of
+        # raising and blanking the whole bar (see _prestige_defaults).
+        elite_level_xp=prestige.get("elite_level_xp", {}))
 
 
 # --- helpers ---------------------------------------------------------------
@@ -193,9 +195,14 @@ def _read_post_progression(veh):
 
 
 def _prestige_defaults():
+    # NB: every key here must match what build_snapshot reads off the prestige
+    # dict. A missing key makes build_snapshot raise -> push() bails -> the bar
+    # silently keeps the previous vehicle. elite_level_xp is a {level -> xp} map
+    # (the success path sets it via _read_level_xp); default to {} so the
+    # early-return paths (e.g. non-elite vehicles) stay well-formed.
     return dict(has_prestige=False, elite_level=0, elite_max_level=0,
                 elite_current_xp=0, elite_next_xp=0,
-                elite_grades=[], elite_rewards=[])
+                elite_grades=[], elite_rewards=[], elite_level_xp={})
 
 
 def _read_prestige(veh):

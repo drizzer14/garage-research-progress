@@ -47,6 +47,18 @@ def test_tech_tree_fill_is_two_segments():
     assert [tk.affordable for tk in m.ticks] == [True, False]
 
 
+def test_elite_with_remaining_unlocks_is_tech_tree():
+    # Regression: veh.isElite can be True (eliteVehicles membership) while modules
+    # are still unresearched (e.g. Leopard 1). Research must win over field mods.
+    snap = t.VehicleSnapshot(
+        tier=10, is_elite=True, vehicle_xp=0, free_xp=0,
+        tech_unlocks=[_u(1, 5000)],                 # still something to research
+        field_mod_steps=[_step(1, 2000)])           # field mods also available
+    m = build_model(snap)
+    assert m.mode == t.Mode.TECH_TREE
+    assert [tk.xp_position for tk in m.ticks] == [5000]
+
+
 def test_elite_with_field_mods_is_field_mods_mode():
     snap = t.VehicleSnapshot(
         tier=10, is_elite=True, vehicle_xp=1000, free_xp=200,

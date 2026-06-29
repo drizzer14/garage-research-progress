@@ -116,6 +116,13 @@
     background-size: contain;
     filter: drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.8));
 }
+/* The elite modes use the combat-XP star (xpIcon_23x22.png), whose art carries
+   more transparent padding than the Total-XP glyph -- contain-scaling into the
+   same 16rem box makes it read smaller. Bump its background-size so it matches
+   the Total-XP star's visual size in the other modes. */
+#wgmod-root.wg-elite .wg-xp-ico {
+    background-size: 130%;
+}
 
 /* Track: flat dark channel with a TWO-TONE frame -- a dark outer border, then a
    lighter inner border (drawn by the ::after overlay) whose color the segment
@@ -426,8 +433,8 @@
     top: 100%;
     margin-top: 4rem;
     transform: translateX(-50%);
-    width: 26rem;
-    height: 26rem;
+    width: 30rem;
+    height: 30rem;
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
@@ -453,24 +460,36 @@
 }
 
 /* State treatment, shared by reward thumbnails and grade emblems. */
+/* The grade emblems are colored by METAL TIER (bronze is dark, silver/gold are
+   bright), and that intrinsic brightness was swamping a glow-based state hint --
+   an earned dark-bronze badge read as "faded" while the not-yet-earned brighter
+   next-grade badge read as "lit". So the state signal must be carried by HARD
+   darkening of the not-yet badges (kills the metal's own brightness) while earned
+   badges keep full color + a gold halo. grayscale()/brightness() are confirmed to
+   render in Gameface (see .wg-locked .wg-tick-img above). */
 #wgmod-root .wg-state-achieved .wg-tick-reward,
 #wgmod-root .wg-state-achieved .wg-tick-emblem {
-    /* earned -> full art, warm gold glow hugging its silhouette. */
-    filter: drop-shadow(0 0 3rem rgba(232, 184, 75, 0.85))
+    /* earned -> the solid badge keeps its full color (bronze/silver/gold) + a warm
+       gold halo so it reads as lit/earned, matching the gold fill bar. */
+    filter: drop-shadow(0 0 3rem rgba(232, 184, 75, 0.9))
             drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
+    opacity: 1;
 }
 #wgmod-root .wg-state-next .wg-tick-reward,
 #wgmod-root .wg-state-next .wg-tick-emblem {
-    /* next -> bright white glow, the one you're working toward. */
-    filter: drop-shadow(0 0 4rem rgba(255, 255, 255, 0.85))
+    /* next -> full color + bright white halo, the one you're working toward. */
+    filter: drop-shadow(0 0 4rem rgba(255, 255, 255, 0.9))
             drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
+    opacity: 1;
 }
 #wgmod-root .wg-state-upcoming .wg-tick-reward,
 #wgmod-root .wg-state-upcoming .wg-tick-emblem {
-    /* future -> faded + desaturated art, reads as "not yet". */
-    filter: grayscale(0.7) brightness(0.85)
+    /* not yet -> grey out the solid badge + dim it, so it clearly reads as locked
+       next to the colored earned badges. (The badge is solid now, so grayscale
+       reads as a clean grey hexagon rather than a see-through one.) */
+    filter: grayscale(1) brightness(0.7)
             drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
-    opacity: 0.6;
+    opacity: 0.7;
 }
 
 /* Hover tooltip (name + XP), shown above the track at the hovered tick's x.

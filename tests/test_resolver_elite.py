@@ -48,10 +48,10 @@ def test_grade_band_picks_current_family():
 def test_grade_band_ticks_carry_emblem_urls():
     res = elite.resolve_grade_band(_snap(12))
     icons = [tk.icon for tk in res["ticks"]]
-    assert icons[0] == "img://gui/maps/icons/prestige/emblem/48x48/bronze/1.png"
-    assert icons[3] == "img://gui/maps/icons/prestige/emblem/48x48/bronze/4.png"
+    assert icons[0] == "img://gui/maps/icons/prestige/emblem/72x72/bronze/1.png"
+    assert icons[3] == "img://gui/maps/icons/prestige/emblem/72x72/bronze/4.png"
     # the trailing next-grade tick is the synthetic MAX ("prestige") emblem
-    assert icons[4] == "img://gui/maps/icons/prestige/emblem/48x48/prestige.png"
+    assert icons[4] == "img://gui/maps/icons/prestige/emblem/72x72/prestige.png"
 
 
 def test_grade_band_ticks_carry_xp_cost():

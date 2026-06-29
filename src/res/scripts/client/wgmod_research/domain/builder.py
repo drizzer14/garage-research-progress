@@ -29,14 +29,22 @@ def build_model(snapshot):
     fm_total = snapshot.fieldmods_total
     veh_class = snapshot.vehicle_class
 
-    if not snapshot.is_elite:
-        ticks = techtree.resolve(snapshot)
+    # Research takes priority: while ANY tech unlock (module or next vehicle) is
+    # still unresearched, show the tech tree -- even on a vehicle the account
+    # already counts as elite. veh.isElite is merely eliteVehicles membership and
+    # can be True while modules remain unresearched; only isFullyElite means
+    # nothing is left (Vehicle.py:304-305). Gating on is_elite wrongly showed
+    # Field Modifications for still-researchable elite tanks (e.g. Leopard 1).
+    # techtree.resolve already returns remaining-only ticks, so its emptiness is
+    # the exact "nothing left to research" signal.
+    ticks = techtree.resolve(snapshot)
+    if ticks:
         return t.ResearchProgressModel(
             mode=t.Mode.TECH_TREE, scale_min=0, scale_max=_max_pos(ticks, 0),
             fill_vehicle=fill_vehicle, fill_free=fill_free, ticks=ticks,
             vehicle_class=veh_class)
 
-    # elite = fully researched: show remaining Field Modifications, plus the
+    # Nothing left to research: show remaining Field Modifications, plus the
     # researched/total field-mod-level counter in the header.
     fm_ticks = fieldmods.resolve(snapshot)
     if fm_ticks:

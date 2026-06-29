@@ -21,7 +21,11 @@ from wgmod_research.domain import types as t
 # silver/gold/enamel carry sub-grades 1..4, and the terminal MAX grade is a single
 # "prestige" badge. Built here (deterministic from family+sub) so each grade tick
 # carries its emblem img:// URL like the other ticks carry theirs.
-_EMBLEM_BASE = "img://gui/maps/icons/prestige/emblem/48x48/"
+# Use the 72x72 set, NOT 48x48: the 48x48 art is a sparse downscale that renders
+# see-through/grey when scaled up on the bar; 72x72 is the solid, detailed badge
+# (full color + laurel) that reads correctly at our render size. Same family/sub
+# layout + a terminal prestige.png.
+_EMBLEM_BASE = "img://gui/maps/icons/prestige/emblem/72x72/"
 
 
 def _emblem_url(family, sub):
