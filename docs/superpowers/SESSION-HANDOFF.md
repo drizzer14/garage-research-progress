@@ -1,15 +1,101 @@
 # Session Handoff — Research-Progress Bar (Phase 2, in-game working)
 
-_Updated 2026-06-29 (Elite-System session). Read tools/dev/README.md for the dev
-loop. **THIS SESSION shipped the Elite Levels ("prestige") system** — see "Elite
-System (DONE this session)" below. **NEXT SESSION FOCUS: TIER-XI UPGRADES
-("vehicle skill tree") progression.** Owner-set. NB: the owner **cannot visually
-verify it yet** — they have no un-upgraded tier-XI vehicle on the account right
-now — so develop against the decompiled source + the live REPL, get the data
-plumbing right, and DEFER the in-game visual sign-off until a suitable tank is
-available (or one is found). This is a DATA/DOMAIN change (new mode/adapter reads
-for the branching skill tree), so it needs the Python build+deploy+relaunch loop,
-not just hot-reload. Research leads are pre-collected in "Tier-XI upgrades" below._
+_Updated 2026-06-29 (bug-fix session, 2nd round). Read tools/dev/README.md for the
+dev loop. **THIS SESSION was a bug-fix detour, NOT the planned tier-XI work.**
+SHIPPED + owner-confirmed in-game: (1) research-state bar-update crash
+(`KeyError('elite_level_xp')`); (2) elite vehicles with research left wrongly
+showing Field Mods instead of Research (Leopard-1 case); (3) undersized elite
+combat-XP icon. STILL UNRESOLVED + owner-set as the **NEXT SESSION FOCUS: the elite
+grade-emblem STATE/transparency look — via "battle score-panel badges"** (the owner
+has seen another mod use those). See "Elite emblem look (UNRESOLVED)" below for the
+full dead-ends + leads. AFTER that, the longstanding **TIER-XI UPGRADES ("vehicle
+skill tree") progression** remains the roadmap item (research pre-collected in
+"Tier-XI upgrades"; owner can't visually verify it yet — develop vs decompiled
+source + REPL, defer in-game sign-off).
+
+**State at handoff: all changes are in the working tree, UNCOMMITTED** (44 pytest
+green, 2.7-compiles; emblem experiments reverted to a clean baseline). The shipped
+fixes are in the freshly-built `.wotmod` + the res_mods overlay (kept consistent).
+Commit the three confirmed fixes before starting new work._
+
+## Bug-fix session (deployed; fixes 1-3 owner-CONFIRMED in-game)
+Diverted from tier-XI to fix owner-reported bugs.
+- **Elite vehicle with research left showed Field Mods, not Research (CONFIRMED
+  fixed — "Leopard 1" case).** `builder.build_model` gated TECH_TREE on
+  `not snapshot.is_elite`, but `veh.isElite` is merely account `eliteVehicles`
+  membership and goes True while modules are still unresearched (only `isFullyElite`
+  = all `unlocksDescrs` researched means nothing's left — `Vehicle.py:304-305,660-665`).
+  Fix: build_model now shows TECH_TREE whenever `techtree.resolve(snapshot)` returns
+  any (remaining-only) ticks, regardless of is_elite — research wins over field mods.
+  Regression test `test_elite_with_remaining_unlocks_is_tech_tree`.
+- **Research-state bar never updated (the big one).** Selecting a non-elite tank
+  left the bar showing the previous vehicle. Root cause found via the client log:
+  `engine_adapter.build_snapshot()` raised **`KeyError('elite_level_xp')`** and
+  `push()` swallowed it, so nothing was written. `_prestige_defaults()` was missing
+  the `elite_level_xp` key; every early-return path in `_read_prestige` returns that
+  dict, and a non-elite vehicle takes the `hasVehiclePrestige(checkElite=True)
+  → False → return out` path. Elite vehicles hit the success path (which sets the
+  key), so only research tanks broke. **Exactly the "wire a new field into BOTH the
+  defaults dict AND the `VehicleSnapshot(...)` call" trap noted in the Elite session
+  — the defaults dict was the half that got missed.** Fix: added `elite_level_xp={}`
+  to `_prestige_defaults()` + made the constructor read it via
+  `prestige.get("elite_level_xp", {})` so a future missing key degrades to a
+  graceful render instead of blanking the bar. (Investigation ruled OUT a
+  `g_currentVehicle.onChanged` timing/staleness cause: onChanged fires reliably
+  ~200ms post-switch with fresh data — verified in `currentvehicle.py`.)
+- **Elite combat-XP icon too small.** The elite modes' combat star
+  (`xpIcon_23x22.png`) has more transparent padding than the Total-XP glyph, so
+  `background-size:contain` in the shared 16rem `.wg-xp-ico` box rendered it smaller.
+  Fix: `#wgmod-root.wg-elite .wg-xp-ico { background-size: 130%; }` (tune live).
+- **Elite grade-emblem state/transparency look — NOT FIXED (next focus).** See the
+  dedicated section below.
+- **Diagnosis technique worth reusing:** the mod logs `push mode=… ticks=…` and
+  `onChanged -> refresh ok=…` to `python.log`. A standalone `onChanged -> refresh
+  ok=True` with NO preceding `push mode=…` means `build_snapshot` returned None/raised
+  (push bailed). Grepping the live log pinpointed the crash without the REPL. Also
+  the live REPL (`tools/dev/repl_client.py --file …`; build a `RESULT` string,
+  `execfile` a script) dumps the live model's per-tick icon/state — used it to
+  confirm exactly which emblem URLs/states were being produced.
+
+## Elite emblem look (UNRESOLVED — next session, owner wants "battle score badges")
+The owner is unhappy with the per-level grade emblems on the ELITE bar: earned
+levels "don't change state" / look faded/transparent. **Code is correct** —
+`elite.resolve_grade_band` tags each tick `state=achieved/next/upcoming` and JS
+applies `wg-state-*`; verified live via REPL. The problem is purely visual.
+
+Dead-ends tried this session (all reverted to a clean baseline — single
+`.wg-tick-emblem` bg-image div + number, `.wg-state-*` filters):
+- Stronger CSS glow / saturate / brightness, then hard-darken "upcoming". Didn't
+  read — the emblem ART brightness (dark bronze vs bright silver) dominated.
+- Switched emblem source `48x48` → **`72x72`** (KEPT — higher-res, crisper; URL in
+  `elite._EMBLEM_BASE`). Did NOT fix it: the badges have a **translucent mesh
+  interior by design**, so they look see-through over the bright hangar at any size.
+- A dark "coin" backing behind each emblem — owner: "looks bad".
+- A soft dark radial-vignette disk (JS wraps art in `.wg-tick-emblem-art` over a
+  `.wg-tick-emblem` disk) — owner: "still shitty". Reverted.
+- Tried the skill-tree state set `skillTree/prestige/emblem/{available,current,
+  disable}.png` (purpose-built for state) — also translucent white hexagons.
+Root finding (decompiled source): there is **NO solid standalone emblem PNG**. All
+prestige emblems are translucent overlays; the game makes them look solid via its
+own gameface COMPONENT + dark panel context. The battle player panel uses
+`gui/impl/gen/view_models/common/battle_player.py` → `PrestigeEmblemModel`
+(type+grade only, no image path), rendered by the React component
+`res/.../gui/gameface/_dist/production/lobby/prestige/sharedComponents/
+PrestigeProgressSymbol/*` (minified). Backing art exists but is layout-scale
+(`skillTree/prestige/vanity_bg`, `rays`, `prestige/emblem/emblemGlow.png`).
+
+**NEXT-SESSION leads for "battle score-panel badges":**
+1. **Look at the OTHER mod** the owner saw using battle score-panel badges — its
+   source will show the exact asset path / compositing it uses. Best starting point.
+2. Battle consumers of the emblem: `gui/impl/gen/view_models/views/battle/
+   battle_page/player_list_model.py` and `gui/impl/battle/battle_page/tab_view.py`.
+3. **`emblemFont/<size>/<grade>/<digit>.png`** (sizes 6x12 … 77x176) — SOLID,
+   grade-COLORED digit glyphs (the styled level number). The battle panel may show
+   the prestige level as these colored digits rather than the hexagon badge; could
+   be the clean "solid" look the owner wants. View them first.
+4. If a backing is unavoidable, the owner rejected flat/soft dark disks — so prefer
+   a solid asset (emblemFont) or replicating the game component's exact treatment,
+   not another home-grown backing.
 
 ## Elite System (DONE this session — deployed, owner verifying in-game)
 The "EU dropped elite/Paragons" note was WRONG (it conflated EU's Elite Levels
