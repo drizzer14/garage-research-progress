@@ -4,6 +4,12 @@ Recorded ideas for the mod. Entries are deleted once implemented.
 
 ## Open
 
+### Hide the bar outside the garage
+Hide the bar on the playlists view and all other non-garage views — it should only
+show in the actual garage. Extends the existing visibility mechanism (the `visible`
+VM prop + loadout-overlay auto-hide in `gameface_bridge.py`); needs detection of
+which view is mounted.
+
 ### Draggable bar position (feasibility unknown)
 Let the user drag the bar to reposition it, to avoid overlap/conflicts with other
 mods' UI. Persist the dragged position (ties into the settings system / "bar position"
