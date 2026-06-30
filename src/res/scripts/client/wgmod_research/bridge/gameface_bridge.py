@@ -19,6 +19,7 @@ from skeletons.gui.game_control import ILoadoutController
 from skeletons.gui.shared import IItemsCache
 
 from wgmod_research.adapter import engine_adapter
+from wgmod_research.adapter import actions
 from wgmod_research.domain.builder import build_model
 import openwg_gameface
 
@@ -202,8 +203,81 @@ def install_stats_listener():
         LOG_CURRENT_EXCEPTION()
 
 
+# --- Reverse channel: handlers for JS click commands -------------------------
+# The widget JS invokes the ResearchVM commands when a clickable tick is clicked.
+# Each handler reads the tick identity Wulf delivered and delegates to the
+# write-side `actions` module (which touches the game's research / unlock APIs).
+# After a successful action the game fires onSyncCompleted, which the stats
+# listener already turns into a bar refresh -- so handlers do not refresh here.
+
+def _cmd_int_arg(args):
+    """Extract the int id a JS command invocation carried. Wulf delivers a single
+    MAP argument (the JS side wraps the id as {value: id}); pull our key out of it,
+    tolerating a plain dict, a wrapped map, or a bare scalar. 0 = nothing usable."""
+    try:
+        if not args:
+            return 0
+        a = args[0]
+        if isinstance(a, dict):
+            a = a.get("value", a.get("id"))
+        else:
+            getter = getattr(a, "get", None)
+            if callable(getter):
+                try:
+                    a = a.get("value")
+                except Exception:
+                    pass
+        try:
+            return int(a)
+        except (TypeError, ValueError):
+            return 0
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+        return 0
+
+
+def _on_research_unlock(*args):
+    try:
+        int_cd = _cmd_int_arg(args)
+        LOG_NOTE("[wgmod] researchUnlock intCD=%s" % int_cd)
+        if int_cd:
+            actions.research_unlock(int_cd)
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
+def _on_unlock_field_mod(*args):
+    try:
+        step_id = _cmd_int_arg(args)
+        LOG_NOTE("[wgmod] unlockFieldMod stepID=%s" % step_id)
+        if step_id:
+            actions.unlock_field_mod(step_id)
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
+def _on_open_skill_tree(*args):
+    try:
+        LOG_NOTE("[wgmod] openSkillTree")
+        actions.open_skill_tree()
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
+def _connect_commands(rvm):
+    """Wire the reverse-channel commands to their handlers. The command objects
+    are Wulf events that support +=. A fresh ResearchVM is created per attach(),
+    so there's no double-subscription to guard against."""
+    try:
+        rvm.researchUnlock += _on_research_unlock
+        rvm.unlockFieldMod += _on_unlock_field_mod
+        rvm.openSkillTree += _on_open_skill_tree
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
 class TickVM(ViewModel):
-    def __init__(self, properties=10, commands=0):
+    def __init__(self, properties=11, commands=0):
         super(TickVM, self).__init__(properties=properties, commands=commands)
 
     def _initialize(self):
@@ -218,6 +292,7 @@ class TickVM(ViewModel):
         self._addNumberProperty("level", 0)      # 7 (field-mod level -> roman)
         self._addStringProperty("options", "")   # 8 (pair variants, \n-joined)
         self._addStringProperty("state", "")     # 9 (elite mark: achieved/next/upcoming)
+        self._addNumberProperty("actionId", 0)   # 10 (tech-tree int_cd / field-mod step_id; 0 = not clickable)
 
     def setPosition(self, v):
         self._setNumber(0, v)
@@ -249,9 +324,37 @@ class TickVM(ViewModel):
     def setState(self, v):
         self._setString(9, v)
 
+    def setActionId(self, v):
+        self._setNumber(10, v)
+
+
+class UpgradeVM(ViewModel):
+    """One available tier-XI upgrade node -> a clickable 'Upgrades Available' chip."""
+    def __init__(self, properties=4, commands=0):
+        super(UpgradeVM, self).__init__(properties=properties, commands=commands)
+
+    def _initialize(self):
+        super(UpgradeVM, self)._initialize()
+        self._addNumberProperty("actionId", 0)    # 0 (skill-tree step_id)
+        self._addStringProperty("icon", "")        # 1 (img:// URL)
+        self._addStringProperty("name", "")        # 2
+        self._addNumberProperty("xpRequired", 0)   # 3
+
+    def setActionId(self, v):
+        self._setNumber(0, v)
+
+    def setIcon(self, v):
+        self._setString(1, v)
+
+    def setName(self, v):
+        self._setString(2, v)
+
+    def setXpRequired(self, v):
+        self._setNumber(3, v)
+
 
 class ResearchVM(ViewModel):
-    def __init__(self, properties=15, commands=0):
+    def __init__(self, properties=16, commands=3):
         super(ResearchVM, self).__init__(properties=properties, commands=commands)
 
     def _initialize(self):
@@ -271,6 +374,13 @@ class ResearchVM(ViewModel):
         self._addNumberProperty("eliteSub", 0)       # 12 (current sub-grade 1..4)
         self._addNumberProperty("combatXp", 0)       # 13 (cumulative combat XP)
         self._addBoolProperty("visible", True)        # 14 (false hides the bar)
+        self._addArrayProperty("availUpgrades", Array())  # 15 ([UpgradeVM] -> chips)
+        # Reverse channel: JS click handlers invoke these commands. Each returns a
+        # command object that connect_commands() wires to a Python handler. Wulf
+        # delivers the JS-supplied argument(s) to those handlers.
+        self.researchUnlock = self._addCommand("researchUnlock")    # arg: tech-tree int_cd
+        self.unlockFieldMod = self._addCommand("unlockFieldMod")    # arg: field-mod step_id
+        self.openSkillTree = self._addCommand("openSkillTree")      # no arg
 
     def setMode(self, v):
         self._setString(0, v)
@@ -317,9 +427,16 @@ class ResearchVM(ViewModel):
     def setVisible(self, v):
         self._setBool(14, v)
 
+    def getAvailUpgrades(self):
+        return self._getArray(15)
+
     @staticmethod
     def getTicksType():
         return TickVM
+
+    @staticmethod
+    def getAvailUpgradesType():
+        return UpgradeVM
 
 
 def attach(host_vm):
@@ -332,6 +449,7 @@ def attach(host_vm):
             styles=[COUI + "/WGModResearch.css"],
             modules=[COUI + "/WGModResearch.js"])
         rvm = ResearchVM()
+        _connect_commands(rvm)
         host_vm._addViewModelProperty(DATA_PROP, rvm)
         _active = (host_vm, rvm)
         return rvm
@@ -389,8 +507,20 @@ def push(rvm, host_vm=None):
                 tv.setLevel(t.level or 0)
                 tv.setOptions("\n".join(t.options or []))
                 tv.setState(t.state or "")
+                tv.setActionId(t.action_id or 0)
                 arr.addViewModel(tv)
             arr.invalidate()
+            # Available tier-XI upgrade nodes -> the clickable header chips.
+            ua = tx.getAvailUpgrades()
+            ua.clear()
+            for up in model.avail_upgrades:
+                uv = UpgradeVM()
+                uv.setActionId(getattr(up, "step_id", 0) or 0)
+                uv.setIcon(getattr(up, "icon", "") or "")
+                uv.setName(getattr(up, "name", "") or "")
+                uv.setXpRequired(getattr(up, "xp_cost", 0) or 0)
+                ua.addViewModel(uv)
+            ua.invalidate()
         # Nudge the host sub-view so its data re-syncs to JS (nested-model
         # updates may not bubble a data-changed event on their own).
         if host_vm is not None:

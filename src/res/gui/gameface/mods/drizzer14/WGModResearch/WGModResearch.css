@@ -331,6 +331,15 @@
        the bright fill -- box-shadow would draw a rectangle. */
     filter: drop-shadow(0 1rem 2rem rgba(0, 0, 0, 0.85));
 }
+/* skill-tree "final upgrade" tick: a roughly-square perk glyph -- swap the wide
+   module box for a square one so the icon reads at full size. Only the rightmost
+   (final) tick carries an icon in skill-tree mode; if it's not yet earned the
+   tick's wg-locked state dims the glyph via the rule above. */
+#wgmod-root .wg-cat-upgrade .wg-tick-img {
+    width: 26rem;
+    height: 26rem;
+}
+
 /* vehicle (next-tank) uses the framed tech-tree icon (~160x100, 1.6:1) -- give
    it a larger box so the tank reads, contain keeps it fully framed. The render is
    a dark, realistic tank that blends into the dark area below the bar; the base
@@ -574,7 +583,7 @@
 }
 /* Title -- native `.Index_title` token (primary parchment, semibold). */
 #wgmod-root .wg-tip-name {
-    font-size: 17rem;
+    font-size: 14rem;
     font-weight: 600;
     color: #ede6d9;
     opacity: 0.95;
@@ -592,7 +601,7 @@
     margin-bottom: 3rem;
 }
 #wgmod-root .wg-tip-variant {
-    font-size: 17rem;           /* title weight/size, like .wg-tip-name */
+    font-size: 14rem;           /* title weight/size, like .wg-tip-name */
     font-weight: 600;
     color: #ede6d9;
     opacity: 0.95;
@@ -611,7 +620,7 @@
 
 #wgmod-root .wg-tip-xp {
     margin-top: 3rem;           /* sits tight under the title */
-    font-size: 15rem;
+    font-size: 13rem;
     font-weight: 700;
     color: #ecca9d;             /* currency tan, like the XP figures */
 }
@@ -620,6 +629,134 @@
     font-size: 13rem;
     font-weight: 700;
     letter-spacing: 0.5rem;
-    text-transform: uppercase;
     color: #8e867d;             /* dim, matches the locked-tick gray */
+}
+
+/* Clickable ticks (research / unlock / open-screen targets). Clicks are routed
+   through the .wg-hot overlay (the only pointer-events:auto layer), which also
+   shows a pointer cursor over these via JS -- so the interactive cue is the
+   cursor, not :hover (ticks have no pointer-events). A faint warm glow marks them
+   as live without fighting the affordable/locked state tones. */
+#wgmod-root .wg-tick.wg-clickable {
+    box-shadow: 0 0 4rem rgba(255, 244, 200, 0.6);
+}
+
+/* Tier-XI upgrade icon -- matches the Upgrades screen: a frame (minor 10k = square
+   plate; major 20k/25k = diamond) with the perk glyph centered on top. Shared by the
+   Next-available chips and the bar's final-upgrade tick (.wg-final). Frame textures
+   in-game are Flash composites (not referenceable as PNGs), so the plate/diamond are
+   drawn in CSS in the bar's parchment theme. */
+#wgmod-root .wg-chip {
+    position: relative;
+    width: 30rem;
+    height: 30rem;
+    margin-right: 8rem;
+    pointer-events: none;       /* visual only; .wg-hot hit-tests + handles hover/click */
+}
+#wgmod-root .wg-chip-hot { transform: scale(1.1); }   /* JS-toggled hover lift */
+/* frame: a thin light ring over a translucent dark disc, centered in the box --
+   matching the Upgrades screen (minor = circle, major = diamond). */
+#wgmod-root .wg-chip-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    background: rgba(12, 12, 14, 0.55);
+    border: 2rem solid rgba(237, 230, 217, 0.6);
+    box-shadow: 0 0 3rem rgba(0, 0, 0, 0.8);
+}
+#wgmod-root .wg-chip-minor .wg-chip-frame {     /* circle (minor, 10k) */
+    width: 26rem;
+    height: 26rem;
+    margin: -13rem 0 0 -13rem;
+    border-radius: 50%;
+}
+#wgmod-root .wg-chip-major .wg-chip-frame {     /* diamond (major, 20k / 25k) */
+    width: 20rem;
+    height: 20rem;
+    margin: -10rem 0 0 -10rem;
+    transform: rotate(45deg);
+}
+/* perk glyph, centered on top of the frame (never rotated). Sized per shape so it
+   fits the circle vs the (smaller usable area of the) diamond. */
+#wgmod-root .wg-chip-ico {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: drop-shadow(0 1rem 1rem rgba(0, 0, 0, 0.85));
+}
+#wgmod-root .wg-chip-minor .wg-chip-ico {
+    width: 16rem;
+    height: 16rem;
+    margin: -8rem 0 0 -8rem;
+}
+#wgmod-root .wg-chip-major .wg-chip-ico {
+    width: 13rem;
+    height: 13rem;
+    margin: -6.5rem 0 0 -6.5rem;
+}
+/* Skill-tree FINAL upgrade: the same framed glyph, hung below the rightmost tick. */
+#wgmod-root .wg-final {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    margin-top: 4rem;
+    transform: translateX(-50%);
+    width: 30rem;
+    height: 30rem;
+}
+/* per-chip tooltip (name + XP cost), toggled by JS hover, shown BELOW the chip.
+   Reuses the native 9-slice tooltip frame + the tip text tokens. */
+#wgmod-root .wg-chip-tip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6rem;
+    z-index: 10;
+    pointer-events: none;
+    box-sizing: border-box;
+    white-space: nowrap;        /* short perk names stay one line -> compact box */
+    padding: 8rem 12rem 9rem;
+    text-align: left;
+    background: rgba(20, 20, 20, 0.95);
+    border-style: solid;
+    border-width: 4rem;
+    border-color: transparent;
+    border-image-source: url('img://gui/maps/icons/tooltip/background_with_border.png');
+    border-image-slice: 4 fill;
+    border-image-width: 4rem;
+    border-image-repeat: round;
+    box-shadow: 0 0 24rem rgba(15, 15, 15, 0.8);
+}
+
+/* Tier-XI "Next available:" row at the tick/glyph level just below the bar: a
+   caption + the clickable upgrade chips, left-aligned with the bar. Shown only in
+   skill_tree mode (JS sets display:flex). Mirrors the .wg-hot overlay (the proven-
+   interactive pattern): pointer-events:auto + a z-index above it so the chips
+   reliably receive hover/click. Content-width (right:auto) so it only covers the
+   chips, not the whole strip. */
+#wgmod-root .wg-next {
+    position: absolute;
+    left: 0;
+    right: auto;
+    top: 100%;
+    margin-top: 4rem;
+    display: none;
+    align-items: center;
+    z-index: 5;                 /* paints above .wg-hot so the chips are visible... */
+    pointer-events: none;       /* ...but events pass through to .wg-hot, which hit-tests them */
+}
+#wgmod-root .wg-next-cap {
+    margin-right: 10rem;
+    font-size: 11rem;
+    font-weight: 700;
+    letter-spacing: 1rem;
+    text-transform: uppercase;
+    color: #ecca9d;             /* currency tan, like the XP figures */
+    text-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.85);
+    white-space: nowrap;
 }

@@ -126,26 +126,44 @@ def test_elite_with_no_field_mods_is_complete():
 # --- Tier-XI skill-tree (upgrade) mode ------------------------------------
 
 def _skill_snap(total_xp=325000, spent_xp=130000, done=10, total=26,
-                vehicle_xp=40000, free_xp=5000, **kw):
+                vehicle_xp=40000, free_xp=5000, final_icon="img://final.png", **kw):
     return t.VehicleSnapshot(
         tier=10, is_elite=True, vehicle_xp=vehicle_xp, free_xp=free_xp,
         is_skill_tree=True, skilltree_total_xp=total_xp,
         skilltree_spent_xp=spent_xp, skilltree_done=done, skilltree_total=total,
-        vehicle_class="heavyTank", **kw)
+        skilltree_final_icon=final_icon, vehicle_class="heavyTank", **kw)
 
 
 def test_skill_tree_mode_when_upgrade_remaining():
-    m = build_model(_skill_snap(total_xp=325000, spent_xp=130000, done=10,
-                                total=26))
+    m = build_model(_skill_snap(done=10, total=26))
     assert m.mode == t.Mode.SKILL_TREE
     assert m.scale_min == 0
-    assert m.scale_max == 325000             # axis = fixed full-upgrade cost
-    assert m.fill_vehicle == 130000          # single segment = cumulative invested
-    assert m.fill_free == 0                  # free slot unused in this mode
-    assert m.ticks == []                     # aggregate readout, no per-node ticks
+    assert m.scale_max == 26                  # axis = total upgrade NODES (count)
+    assert m.fill_vehicle == 10               # single segment = nodes unlocked
+    assert m.fill_free == 0                   # free slot unused in this mode
+    assert len(m.ticks) == 26                 # one tick per node
+    assert m.ticks[-1].icon == "img://final.png"  # final upgrade flagged at end
     # node counter rides the existing field-mod counter fields
     assert (m.fieldmods_done, m.fieldmods_total) == (10, 26)
     assert m.vehicle_class == "heavyTank"
+
+
+def test_skill_tree_carries_available_upgrades():
+    # The frontier nodes (available now) flow through to the model as avail_upgrades,
+    # preserving identity (step_id), name, icon and cost for the clickable chips.
+    avail = [t.ProgressionStep(7, "Reinforced Tracks", "ic7.png", 20000, unlocked=False),
+             t.ProgressionStep(3, "Improved Optics", "ic3.png", 10000, unlocked=False)]
+    m = build_model(_skill_snap(done=5, total=26, skilltree_available=avail))
+    assert m.mode == t.Mode.SKILL_TREE
+    assert [u.step_id for u in m.avail_upgrades] == [7, 3]
+    assert [u.name for u in m.avail_upgrades] == ["Reinforced Tracks", "Improved Optics"]
+    assert [u.xp_cost for u in m.avail_upgrades] == [20000, 10000]
+
+
+def test_skill_tree_available_defaults_empty():
+    # No frontier provided -> empty list, never None (safe for the bridge push loop).
+    m = build_model(_skill_snap(done=10, total=26))
+    assert m.avail_upgrades == []
 
 
 def test_skill_tree_takes_priority_over_field_mods():
@@ -229,3 +247,29 @@ def test_field_mods_take_priority_over_prestige():
         elite_rewards=[t.EliteReward(50, False)])
     m = build_model(snap)
     assert m.mode == t.Mode.FIELD_MODS
+
+
+# --- clickable-tick identity (action_id) ----------------------------------
+
+def test_tech_tree_ticks_carry_int_cd_as_action_id():
+    # Each tech-tree tick must carry its unlock int_cd so a click can research it.
+    snap = t.VehicleSnapshot(tier=6, is_elite=False, vehicle_xp=0, free_xp=0,
+                             tech_unlocks=[_u(1, 1000), _u(2, 500)])
+    m = build_model(snap)
+    # ticks sort by cost -> cd 2 (500) then cd 1 (1000); action_id == int_cd
+    assert [tk.action_id for tk in m.ticks] == [2, 1]
+
+
+def test_field_mod_ticks_carry_step_id_as_action_id():
+    # Each field-mod tick must carry its step_id so a click can unlock the step.
+    snap = t.VehicleSnapshot(tier=10, is_elite=True, vehicle_xp=0, free_xp=0,
+                             field_mod_steps=[_step(1, 2000), _step(2, 4000)])
+    m = build_model(snap)
+    assert [tk.action_id for tk in m.ticks] == [1, 2]
+
+
+def test_skill_tree_ticks_have_no_action_id():
+    # Skill-tree nodes are position-only (non-linear DAG) -> not individually
+    # actionable, so they carry no action identity.
+    m = build_model(_skill_snap(done=10, total=26))
+    assert all(tk.action_id == 0 for tk in m.ticks)

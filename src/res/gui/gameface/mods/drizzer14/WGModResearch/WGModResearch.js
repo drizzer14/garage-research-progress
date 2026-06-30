@@ -10,10 +10,15 @@ const observer = ModelObserver("WGModResearch");
 const CAT_ICON = {
     tech_tree: "img://gui/maps/icons/hangar/vehicleMenu/large/research.png",
     field_mods: "img://gui/maps/icons/hangar/vehicleMenu/large/fieldModification.png",
-    // Tier-XI skill-tree upgrade reuses the field-modification menu glyph (closest
-    // in-game section); swap if a dedicated post-progression icon is preferred.
-    skill_tree: "img://gui/maps/icons/hangar/vehicleMenu/large/fieldModification.png",
+    // Tier-XI vehicle skill tree -> the dedicated "Upgrades" vehicle-management
+    // section glyph (white tank + node network), matching research/fieldMod above.
+    skill_tree: "img://gui/maps/icons/hangar/vehicleMenu/large/vehSkillTree.png",
 };
+
+// Skill-tree (Tier-XI upgrades) mode replaces the right-side Total-XP readout with
+// an "unlocked / total nodes" counter, fronted by the in-game Upgrades-screen
+// counter glyph (the small chevron shown beside its own node counter).
+const SKILL_COUNTER_ICON = "img://gui/maps/icons/skillTree/tree/counter.png";
 
 // Total spendable XP for this vehicle's research = the vehicle's accumulated
 // combat XP + the account-global free XP -- exactly how the in-game research
@@ -118,16 +123,23 @@ function tickName(t) {
 function tooltipHtml(t) {
     const opts = (t.options || "").split("\n").filter(function (s) { return s; });
     let html = "";
-    if (t.category === "fieldmod" && opts.length) {
+    if (t.category === "fieldmod") {
+        // "Field Modification <level>" sub-header on EVERY field-mod tick (incl. the
+        // toggleable single mods, not just the choice-pair levels).
         const r = romanize(t.level);
         if (r) html += '<div class="wg-tip-caption">Field Modification ' + r + "</div>";
-        // The variants are the title; the container scopes the "or" separator (CSS)
-        // so it sits between them, not after the last (the XP div follows).
-        html += '<div class="wg-tip-variants">';
-        for (let i = 0; i < opts.length; i++) {
-            html += '<div class="wg-tip-variant">' + escapeHtml(opts[i]) + "</div>";
+        if (opts.length) {
+            // Choice pair: the variants are the title; the container scopes the "or"
+            // separator (CSS) so it sits between them, not after the last.
+            html += '<div class="wg-tip-variants">';
+            for (let i = 0; i < opts.length; i++) {
+                html += '<div class="wg-tip-variant">' + escapeHtml(opts[i]) + "</div>";
+            }
+            html += "</div>";
+        } else {
+            const name = tickName(t);
+            if (name) html += '<div class="wg-tip-name">' + escapeHtml(name) + "</div>";
         }
-        html += "</div>";
         html += '<div class="wg-tip-xp">' + fmtXp(t.xpRequired || 0) + " XP</div>";
     } else {
         const name = tickName(t);
@@ -175,6 +187,48 @@ function unwrap(x) {
     return x && x.value !== undefined ? x.value : x;
 }
 
+// Invoke a reverse-channel command on our ResearchVM (exposed as `wgResearch` on
+// the host model). Wulf surfaces a ViewModel command as a callable on the model;
+// whether it lives on the wrapped proxy or its unwrapped value can differ across
+// builds, so try both. `arg` is omitted for the no-arg command (openSkillTree).
+function invokeCommand(name, arg) {
+    try {
+        const vm = observer.model && observer.model.wgResearch;
+        let host = null;
+        if (vm && typeof vm[name] === "function") host = vm;
+        else {
+            const inner = unwrap(vm);
+            if (inner && typeof inner[name] === "function") host = inner;
+        }
+        if (!host) { console.error("[wgmod] command missing: " + name); return; }
+        // Wulf commands take a single MAP argument (a raw scalar is rejected by
+        // Gameface as "not a map"); wrap the id so Python can read it back out.
+        if (arg === undefined || arg === null) host[name]();
+        else host[name]({ value: arg });
+    } catch (e) {
+        console.error("[wgmod] invokeCommand failed: " + name, e);
+    }
+}
+
+// Nearest CLICKABLE tick to a cursor x (from hotEl._wgClickMeta), gated by a small
+// proximity window so a click on the bare bar between ticks doesn't fire an action.
+// Imprecise hits are additionally backstopped by WG's confirm dialog (Python side).
+const CLICK_HIT_PCT = 4;
+function nearestClick(hotEl, clientX) {
+    const meta = hotEl._wgClickMeta;
+    if (!meta || !meta.length) return null;
+    const rect = hotEl.getBoundingClientRect();
+    const w = (rect && rect.width) || hotEl.clientWidth || 1;
+    const left = rect ? rect.left : 0;
+    const curPct = ((clientX - left) / w) * 100;
+    let best = null, bestD = 1e9;
+    for (let i = 0; i < meta.length; i++) {
+        const d = Math.abs(meta[i].left - curPct);
+        if (d < bestD) { bestD = d; best = meta[i]; }
+    }
+    return best && bestD <= CLICK_HIT_PCT ? best : null;
+}
+
 function ensureRoot() {
     let root = document.getElementById("wgmod-root");
     if (!root) {
@@ -198,7 +252,8 @@ function ensureRoot() {
             '<div class="wg-ticks"></div>' +
             '<div class="wg-hot"></div>' +
             '<div class="wg-tooltip"></div>' +
-            "</div>";
+            "</div>" +
+            '<div class="wg-next"></div>';
         document.body.appendChild(root);
     }
     return root;
@@ -211,6 +266,97 @@ function arrLen(a) {
     return 0;
 }
 
+// Tier-XI "Next available:" row below the bar: a caption + one clickable chip per
+// available frontier node (perk icon, hover tooltip with name + XP cost, click to
+// unlock). Hidden when nothing is available. The signature FINAL upgrade stays on
+// the bar itself (its rightmost end tick), separate from this row.
+//
+// The chips are VISUAL ONLY (pointer-events:none -- in this Coherent build, elements
+// nested under the pointer-events:none root don't reliably receive events even with
+// pointer-events:auto). Interaction is routed through the .wg-hot overlay (the one
+// proven-interactive layer, which spans this row's area): we register each chip's
+// element + command + tooltip in hotEl._wgChips, and ensureHover() hit-tests them by
+// bounding rect for hover (toggling the chip's own .wg-chip-tip) and click.
+function renderNextAvailable(nextEl, arr, hotEl) {
+    nextEl.innerHTML = "";
+    const chips = [];
+    const n = arrLen(arr);
+    if (n) {
+        const cap = document.createElement("span");
+        cap.className = "wg-next-cap";
+        cap.textContent = "Next available:";
+        nextEl.appendChild(cap);
+        for (let i = 0; i < n; i++) {
+            const u = unwrap(arr[i] !== undefined ? arr[i] : arr.get && arr.get(i));
+            if (!u) continue;
+            const xp = u.xpRequired | 0;
+            // Match the Upgrades screen: minor (10k) -> square plate; major
+            // (>=20k: 20k/25k) -> diamond. Frame + perk glyph layered.
+            const chip = document.createElement("div");
+            chip.className = "wg-chip " + (xp >= 20000 ? "wg-chip-major" : "wg-chip-minor");
+            const frame = document.createElement("div");
+            frame.className = "wg-chip-frame";
+            const ico = document.createElement("div");
+            ico.className = "wg-chip-ico";
+            if (u.icon) ico.style.backgroundImage = "url('" + u.icon + "')";
+            chip.appendChild(frame);
+            chip.appendChild(ico);
+            const tip = document.createElement("div");
+            tip.className = "wg-chip-tip";
+            let html = "";
+            if (u.name) html += '<div class="wg-tip-name">' + escapeHtml(u.name) + "</div>";
+            if (xp > 0) html += '<div class="wg-tip-xp">' + fmtXp(xp) + " XP</div>";
+            tip.innerHTML = html;
+            chip.appendChild(tip);
+            nextEl.appendChild(chip);
+            chips.push({ el: chip, tip: tip, cmd: "unlockFieldMod", arg: u.actionId });
+        }
+        nextEl.style.display = "flex";
+    } else {
+        nextEl.style.display = "none";
+    }
+    if (hotEl) hotEl._wgChips = chips;
+}
+
+// Signature of the available-upgrade set, so render() can skip rebuilding identical
+// chips (a rebuild destroys the hovered chip's tooltip element).
+function upgradesSig(arr) {
+    const n = arrLen(arr);
+    let s = n + ":";
+    for (let i = 0; i < n; i++) {
+        const u = unwrap(arr[i] !== undefined ? arr[i] : arr.get && arr.get(i));
+        if (u) s += (u.actionId | 0) + "," + (u.xpRequired | 0) + ";";
+    }
+    return s;
+}
+
+// The chip (in hotEl._wgChips) whose on-screen box contains the cursor, or null.
+function chipAt(hotEl, clientX, clientY) {
+    const chips = hotEl._wgChips;
+    if (!chips || !chips.length) return null;
+    for (let i = 0; i < chips.length; i++) {
+        const r = chips[i].el.getBoundingClientRect();
+        if (r && clientX >= r.left && clientX <= r.right &&
+            clientY >= r.top && clientY <= r.bottom) return chips[i];
+    }
+    return null;
+}
+
+// Toggle the framed chip tooltip (+ a hover lift) for the hovered chip, clearing any
+// previously-active one. Driven from the .wg-hot handler, not CSS :hover.
+function setActiveChip(hotEl, chip) {
+    const prev = hotEl._wgActiveChip;
+    if (prev && prev !== chip) {
+        prev.tip.style.display = "none";
+        prev.el.classList.remove("wg-chip-hot");
+    }
+    if (chip) {
+        chip.tip.style.display = "block";
+        chip.el.classList.add("wg-chip-hot");
+    }
+    hotEl._wgActiveChip = chip || null;
+}
+
 function render(model) {
     const root = ensureRoot();
     const label = root.querySelector(".wg-label");
@@ -219,6 +365,16 @@ function render(model) {
     const data = unwrap(model && model.wgResearch);
 
     const xpEl = root.querySelector(".wg-xp");
+    // Tier-XI "next upgrade available" CTA below the bar. Bound once; hidden by
+    // default and only shown by the skill_tree branch below. Clicking it opens
+    // WG's skill-tree screen (same command as the final tick).
+    // Tier-XI "Next available:" row (caption + clickable upgrade chips) below the
+    // bar. Hidden by default; the skill_tree branch shows it and (re)builds the chips
+    // only when the upgrade set changes -- NOT every render -- so the hovered chip's
+    // tooltip survives background pushes (rebuilding destroyed it, hence it only
+    // appeared while the cursor was moving).
+    const nextEl = root.querySelector(".wg-next");
+    if (nextEl) nextEl.style.display = "none";
 
     if (!data) {
         const keys = model ? Object.keys(model).join(",") : "no-model";
@@ -246,13 +402,12 @@ function render(model) {
         return;
     }
 
-    // Field-mod progress counter (researched / total levels within the tier
-    // cap) -- shown whenever the vehicle has field mods, regardless of mode.
-    setUpgrades(upgradesEl, data.fieldModsDone || 0, data.fieldModsTotal || 0);
-    // Spendable XP readout (combat XP on this vehicle + global free XP). Shown in
-    // every mode -- placed before the mode branching so COMPLETE shows it too.
+    // The label-side counter is removed for the non-elite modes (tech-tree /
+    // field-mods / skill-tree) -- hide it here. The elite branch (renderElite)
+    // owns this slot for its own LVL n/m readout and isn't reached from here.
+    setUpgrades(upgradesEl, 0, 0);
+    // Right-side readout stays visible in every mode (set per-mode below).
     xpEl.style.display = "flex";
-    setXp(root, data.fillVehicle, data.fillFree);
 
     const mode = data.mode;
     const sMin = data.scaleMin || 0;
@@ -261,6 +416,18 @@ function render(model) {
     const ff = data.fillFree || 0;
     const span = Math.max(sMax - sMin, 1);
     const pct = (xp) => Math.max(0, Math.min(100, ((xp - sMin) / span) * 100));
+
+    // Right-side readout: skill-tree shows the unlocked/total node COUNT fronted by
+    // the Upgrades-screen counter glyph; every other mode (incl. COMPLETE below)
+    // shows spendable Total XP.
+    if (mode === "skill_tree") {
+        root.querySelector(".wg-xp-ico").style.backgroundImage =
+            "url('" + SKILL_COUNTER_ICON + "')";
+        root.querySelector(".wg-xp-val").textContent =
+            (data.fieldModsDone || 0) + "/" + (data.fieldModsTotal || 0);
+    } else {
+        setXp(root, data.fillVehicle, data.fillFree);
+    }
 
     const vehEl = root.querySelector(".wg-fill-veh");
     const freeEl = root.querySelector(".wg-fill-free");
@@ -272,6 +439,24 @@ function render(model) {
     // steals hangar drag-to-rotate). It's sized in CSS to span the bar AND the
     // glyphs below it, so hovering an icon registers too.
     ensureHover(hotEl, tipEl);
+    hotEl._wgMode = mode;   // gates the tick-hover proximity (skill_tree only)
+    // Tier-XI available-upgrade chips: render the visuals + register their hit-zones
+    // on .wg-hot (which owns pointer events). Rebuild ONLY when the upgrade set
+    // changes, so a hovered chip's tooltip isn't wiped by background pushes.
+    if (mode === "skill_tree" && nextEl) {
+        const sig = upgradesSig(data.availUpgrades);
+        if (nextEl._wgSig !== sig) {
+            nextEl._wgSig = sig;
+            setActiveChip(hotEl, null);
+            renderNextAvailable(nextEl, data.availUpgrades, hotEl);
+        } else {
+            nextEl.style.display = "flex";   // unchanged -> keep chips + tooltip, re-show
+        }
+    } else {
+        nextEl._wgSig = null;
+        hotEl._wgChips = [];
+        setActiveChip(hotEl, null);
+    }
     // NB: do NOT hide the tooltip here. render() runs on every model update
     // (which can fire while the cursor sits still over the bar); force-hiding it
     // each render made the tip vanish whenever the cursor stopped moving. The
@@ -287,17 +472,19 @@ function render(model) {
         freeEl.style.width = "0%";
         ticksEl.innerHTML = "";   // no ticks -> nothing to hover
         hotEl._wgTickMeta = [];
+        hotEl._wgClickMeta = [];
         tipEl.style.display = "none";
         return;
     }
-    // Tier-XI skill-tree mode: an aggregate XP readout (axis = XP to fully
-    // upgrade, fill = banked spendable XP), no per-node ticks. The model carries
-    // an empty ticks[], so the tick loop below renders nothing -- a clean single
-    // fill bar with the "VEHICLE UPGRADES N/M" node counter. wg-skill is a hook
-    // for any later fill-tone tuning (the default combat-XP tone is used now).
+    // Tier-XI skill-tree mode: a COUNT bar (axis = total upgrade nodes, fill =
+    // nodes unlocked), with one evenly-spaced tick per node -- bright left of the
+    // fill (unlocked), dim to the right (locked) -- and the signature 'final'
+    // upgrade carrying its icon on the rightmost tick. No per-node tooltips (the
+    // tick loop below skips hover wiring for this mode). wg-skill is a hook for any
+    // later fill-tone tuning (the default combat-XP tone is used now).
     root.className = mode === "skill_tree" ? "wg-skill" : "";
 
-    label.textContent = mode === "skill_tree" ? "Vehicle Upgrades"
+    label.textContent = mode === "skill_tree" ? "Upgrades"
         : mode === "field_mods" ? "Field Modifications" : "Research";
     setCatIcon(catIcon, CAT_ICON[mode] || "");
 
@@ -311,8 +498,16 @@ function render(model) {
     ticksEl.innerHTML = "";
     const ticks = data.ticks;
     const n = arrLen(ticks);
+    // Skill-tree ticks carry no per-node metadata (non-linear tree) -> no hover
+    // tooltips. Other modes wire each tick into the hover system.
+    const noTips = mode === "skill_tree";
     // {left%, body} per tick, for the nearest-by-x hover fallback.
     const tickMeta = [];
+    // {left%, cmd, arg} per CLICKABLE tick, for nearest-by-x click resolution.
+    const clickMeta = [];
+    // Field mods unlock linearly (one by one), so only the NEXT one -- the first
+    // remaining tick -- is ever clickable. Consumed on the first fieldmod seen.
+    let nextFieldMod = true;
     for (let i = 0; i < n; i++) {
         const t = unwrap(ticks[i] !== undefined ? ticks[i] : ticks.get && ticks.get(i));
         if (!t) continue;
@@ -322,13 +517,42 @@ function render(model) {
             (t.locked ? " wg-locked" : t.affordable ? " wg-aff" : "");
         const leftPct = pct(t.position);
         mark.style.left = leftPct + "%";
-        const body = tooltipHtml(t);
-        // Tag the tick (and, via ancestry, its glyph) so the handler can read
-        // the exact tick under the cursor when Gameface deep-targets; also keep
-        // a flat list for the nearest-by-x fallback when it doesn't.
-        mark._wgBody = body;
-        mark._wgLeft = leftPct;
-        tickMeta.push({ left: leftPct, body: body });
+        // Skill-tree count ticks carry no metadata, but the FINAL tick has a name
+        // (+ cost) -> give it a hover tooltip too. Other modes: all ticks tip.
+        if (!noTips || t.name) {
+            const body = tooltipHtml(t);
+            // Tag the tick (and, via ancestry, its glyph) so the handler can read
+            // the exact tick under the cursor when Gameface deep-targets; also keep
+            // a flat list for the nearest-by-x fallback when it doesn't.
+            mark._wgBody = body;
+            mark._wgLeft = leftPct;
+            tickMeta.push({ left: leftPct, body: body });
+        }
+
+        // Clickability -> the reverse-channel command a click fires:
+        //  - skill-tree: only the final tick (the one carrying the icon) opens
+        //    WG's skill-tree screen (nodes carry no per-node identity to unlock).
+        //  - field-mod: LINEAR -> only the next (first remaining) tick is a
+        //    candidate; if affordable, unlock it (a choice-pair level opens the
+        //    screen since a click can't pick a variant).
+        //  - tech-tree (vehicle/module): affordable + prereqs met -> research it.
+        let cmd = null, arg;
+        if (mode === "skill_tree") {
+            if (t.icon) cmd = "openSkillTree";
+        } else if (t.category === "fieldmod") {
+            if (nextFieldMod) {
+                nextFieldMod = false;   // only the next field mod is ever clickable
+                // WG's research dialog handles the step (incl. choice-pair levels).
+                if (t.affordable && t.actionId) { cmd = "unlockFieldMod"; arg = t.actionId; }
+            }
+        } else if ((t.category === "vehicle" || t.category === "module")
+                   && t.affordable && !t.locked && t.actionId) {
+            cmd = "researchUnlock"; arg = t.actionId;
+        }
+        if (cmd) {
+            mark.classList.add("wg-clickable");
+            clickMeta.push({ left: leftPct, cmd: cmd, arg: arg });
+        }
 
         if (t.category === "fieldmod") {
             // Field-mod ticks: a hexagon glyph with the level roman numeral
@@ -339,6 +563,20 @@ function render(model) {
             num.textContent = romanize(t.level);
             hex.appendChild(num);
             mark.appendChild(hex);
+        } else if (t.icon && mode === "skill_tree") {
+            // Skill-tree FINAL upgrade: a framed perk glyph (diamond -- it's a major
+            // 25k node) hung below the rightmost tick, matching the Next-available
+            // chips. Reuses the chip frame/glyph classes.
+            const fin = document.createElement("div");
+            fin.className = "wg-final wg-chip-major";
+            const frame = document.createElement("div");
+            frame.className = "wg-chip-frame";
+            const ico = document.createElement("div");
+            ico.className = "wg-chip-ico";
+            ico.style.backgroundImage = "url('" + t.icon + "')";
+            fin.appendChild(frame);
+            fin.appendChild(ico);
+            mark.appendChild(fin);
         } else if (t.icon) {
             // Tech-tree ticks: the real in-game art (module-type glyph / framed
             // vehicle icon) as an img:// URL. Rendered as a background-image (not
@@ -353,6 +591,7 @@ function render(model) {
         ticksEl.appendChild(mark);
     }
     hotEl._wgTickMeta = tickMeta;
+    hotEl._wgClickMeta = clickMeta;
 }
 
 // Tooltip body for an elite mark: the grade/reward name, (rewards) the reward
@@ -390,6 +629,8 @@ function renderElite(root, data, isRewards) {
     const tipEl = root.querySelector(".wg-tooltip");
     const hotEl = root.querySelector(".wg-hot");
     ensureHover(hotEl, tipEl);
+    hotEl._wgMode = data.mode;   // elite/elite_rewards -> nearest-anywhere tick hover
+    hotEl._wgChips = [];         // no upgrade chips in elite modes
 
     // Header: title (grade family / "EXCLUSIVE REWARDS"), the Elite-level
     // counter, the class+elite badge, and the combat-XP readout.
@@ -464,6 +705,7 @@ function renderElite(root, data, isRewards) {
         ticksEl.appendChild(mark);
     }
     hotEl._wgTickMeta = tickMeta;
+    hotEl._wgClickMeta = [];   // elite grade/reward marks aren't clickable
     // Don't force-hide the tooltip here (render() re-runs on model updates); the
     // hover handler owns visibility, same as the main bar.
 }
@@ -484,6 +726,18 @@ function ensureHover(hotEl, tipEl) {
         tipEl.style.display = "block";
     };
     hotEl.addEventListener("mousemove", function (e) {
+        // Tier-XI "Next available:" chips first (they own a framed tooltip + click,
+        // hit-tested here since they can't receive events themselves).
+        const chip = chipAt(hotEl, e.clientX, e.clientY);
+        if (chip) {
+            setActiveChip(hotEl, chip);
+            tipEl.style.display = "none";
+            hotEl.style.cursor = "pointer";
+            return;
+        }
+        setActiveChip(hotEl, null);
+        // Pointer affordance: a pointer cursor only while over a clickable tick.
+        hotEl.style.cursor = nearestClick(hotEl, e.clientX) ? "pointer" : "";
         // (1) exact element under the cursor.
         let node = e.target;
         while (node && node !== hotEl) {
@@ -502,10 +756,23 @@ function ensureHover(hotEl, tipEl) {
             const d = Math.abs(meta[i].left - curPct);
             if (d < bestD) { bestD = d; best = meta[i]; }
         }
-        if (best) show(best.body, best.left); else tipEl.style.display = "none";
+        // In skill_tree mode the only tooltip-tick is the final upgrade (far right);
+        // gate it by proximity so it doesn't show across the whole empty bar. Other
+        // modes keep nearest-anywhere (dense ticks make that the right behavior).
+        const ok = best && (hotEl._wgMode !== "skill_tree" || bestD <= 6);
+        if (ok) show(best.body, best.left); else tipEl.style.display = "none";
     });
     hotEl.addEventListener("mouseleave", function () {
+        setActiveChip(hotEl, null);
         tipEl.style.display = "none";
+    });
+    // Click -> a Tier-XI chip (exact box hit) first, else the nearest clickable tick
+    // (proximity-gated, with WG's confirm dialog backstopping any imprecise hit).
+    hotEl.addEventListener("click", function (e) {
+        const chip = chipAt(hotEl, e.clientX, e.clientY);
+        if (chip) { invokeCommand(chip.cmd, chip.arg); return; }
+        const hit = nearestClick(hotEl, e.clientX);
+        if (hit) invokeCommand(hit.cmd, hit.arg);
     });
 }
 

@@ -7,6 +7,8 @@ category yields a safe empty default and the rest of the bar still renders.
 
 Symbols verified against the EU 2.3 decompiled client source.
 """
+import re
+
 from CurrentVehicle import g_currentVehicle
 from helpers import dependency
 from skeletons.gui.shared import IItemsCache
@@ -41,8 +43,9 @@ def build_snapshot():
 
     is_skill_tree = _is_skill_tree(veh)
     fm_steps, fm_done, fm_total = _read_post_progression(veh)
-    st_total_xp, st_spent_xp, st_done, st_total = (
-        _read_skill_tree(veh) if is_skill_tree else (0, 0, 0, 0))
+    (st_total_xp, st_spent_xp, st_done, st_total, st_final_icon,
+     st_final_name, st_final_xp, st_available) = (
+        _read_skill_tree(veh) if is_skill_tree else (0, 0, 0, 0, "", "", 0, []))
     prestige = _read_prestige(veh)
 
     return t.VehicleSnapshot(
@@ -66,7 +69,9 @@ def build_snapshot():
         elite_level_xp=prestige.get("elite_level_xp", {}),
         is_skill_tree=is_skill_tree,
         skilltree_total_xp=st_total_xp, skilltree_spent_xp=st_spent_xp,
-        skilltree_done=st_done, skilltree_total=st_total)
+        skilltree_done=st_done, skilltree_total=st_total,
+        skilltree_final_icon=st_final_icon, skilltree_final_name=st_final_name,
+        skilltree_final_xp=st_final_xp, skilltree_available=st_available)
 
 
 # --- helpers ---------------------------------------------------------------
@@ -125,6 +130,76 @@ def _read_tech_unlocks(veh, unlocks):
         return []
 
 
+def _skilltree_icon(node_type, image_name):
+    """Full img:// URL for a skill-tree node's perk icon. The client stores them at
+    skillTree/tree/perks/<type>/skills/small/<imageName>.png (type = getType():
+    common|major|special|final) -- verified live. Bare getImageName() (e.g.
+    'invisibilityWhenShooting') is just the basename. Empty name -> "" (no icon)."""
+    if not image_name:
+        return ""
+    return ("img://gui/maps/icons/skillTree/tree/perks/%s/skills/small/%s.png"
+            % (node_type or "common", image_name))
+
+
+def _humanize(name):
+    """camelCase action id -> spaced Title-ish label, e.g. 'invisibilityWhenShooting'
+    -> 'Invisibility When Shooting'. Empty -> ""."""
+    if not name:
+        return ""
+    spaced = re.sub(r"(?<=[a-z0-9])([A-Z])", r" \1", name)
+    return spaced[:1].upper() + spaced[1:]
+
+
+# Localized names a skill-tree node may carry that are too generic to show, and the
+# shape of ID-like image names (vehicle-specific 'mechanic' nodes, incl. the final).
+_ST_GENERIC_NAMES = frozenset((u"Modification",))
+_ST_ID_RE = re.compile(r"(^s\d+_|mechanic|_\d+$)", re.I)
+
+
+def _skilltree_title(image_name):
+    """The node's real localized title from
+    R.strings.veh_skill_tree.tooltips.title.dyn(<imageName>) -- the same source the
+    Upgrades screen uses (verified live: 's36_mechanic_3' -> 'Hydraulic-Driven
+    Rammer', 'invisibilityWhenShooting' -> 'Concealment After Firing'). "" if absent."""
+    if not image_name:
+        return u""
+    try:
+        from gui.impl.gen import R
+        from gui.impl import backport
+        acc = R.strings.veh_skill_tree.tooltips.title.dyn(image_name)
+        if acc is not None and acc.isValid():
+            return backport.text(acc()) or u""
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+    return u""
+
+
+def _skilltree_name(action, node_type):
+    """Best readable name for a skill-tree node's tooltip. Tiered, since no single
+    source covers every node type (verified live):
+      1) the localized tooltips.title keyed by image name -- authoritative, covers
+         perks AND signature 'mechanic' nodes;
+      2) else a meaningful action loc name -- slot/config nodes give a real one
+         ('Alternate Configuration: Auxiliary Loadout');
+      3) else the humanized image id for a real perk; else a clean generic."""
+    image_name = _safe(lambda: action.getImageName(), "") or ""
+    title = _skilltree_title(image_name)
+    if title:
+        return title
+    loc = u""
+    try:
+        from gui.impl import backport
+        acc = action.getLocNameRes()
+        loc = (backport.text(acc() if callable(acc) else acc) or u"").strip()
+    except Exception:
+        loc = u""
+    if loc and loc not in _ST_GENERIC_NAMES:
+        return loc
+    if image_name and not _ST_ID_RE.search(image_name):
+        return _humanize(image_name)
+    return "Final Upgrade" if node_type == "final" else "Vehicle Upgrade"
+
+
 def _is_skill_tree(veh):
     """True for a tier-XI "vehicle skill tree" upgrade vehicle (branching
     post-progression, tree id >= VEH_SKILL_TREE_ID_OFFSET=10000). Best-effort:
@@ -141,27 +216,35 @@ def _is_skill_tree(veh):
 
 
 def _read_skill_tree(veh):
-    """Aggregate the branching skill tree into (total_xp, spent_xp, done, total) --
-    no per-node detail (owner directive). The bar is a monotonic "% upgraded"
-    readout: total_xp is the FIXED full-upgrade cost (sum of every priced node),
-    spent_xp the cumulative XP already invested (sum of the RECEIVED nodes' prices),
-    and done/total the priced, non-ghost nodes unlocked vs. available (the header
-    N/M counter).
+    """Aggregate the branching skill tree into
+    (total_xp, spent_xp, done, total, final_icon, available). The bar stays a COUNT
+    readout (owner directive: non-linear tree), but `available` carries the frontier
+    nodes (not received, prerequisites met) as [ProgressionStep] for the clickable
+    "Upgrades Available:" chips. done/total
+    are the priced, non-ghost nodes unlocked vs. available; final_icon is the
+    'final' node's art (img:// URL) for the rightmost tick. total_xp/spent_xp are
+    retained for completeness but no longer drive the (count-based) bar.
 
     Steps come from the same veh.postProgression.iterOrderedSteps() the linear
     reader uses, but here each is a tree node: getPrice().xp, isReceived(),
     getType() ('major'/'special'/'final'/'common'/'ghost'). 'ghost' nodes are
     layout placeholders and zero-price nodes aren't purchasable, so neither counts.
+    The 'final' node carries the tank's signature upgrade; its icon comes off the
+    action model the same way field mods read theirs (action.getImageName()).
 
     CRITICAL: the skill tree is a DAG, so iterOrderedSteps() visits a node ONCE PER
     incoming parent edge -- a node with two parents is yielded twice (verified live:
     Hirschkaefer yields 32 steps for 26 unique nodes). We dedupe by stepID, else
-    both the cost and the N/M count are inflated. Fully guarded -> (0, 0, 0, 0) on
+    both the cost and the N/M count are inflated. Fully guarded -> (0,...,"") on
     any failure (bar falls back to COMPLETE)."""
     total_xp = 0
     spent_xp = 0
     done = 0
     total = 0
+    final_icon = ""
+    final_name = ""
+    final_xp = 0
+    available = []
     seen = set()
     try:
         pp = veh.postProgression
@@ -183,13 +266,35 @@ def _read_skill_tree(veh):
                 if bool(step.isReceived()):
                     done += 1
                     spent_xp += xp_cost
+                elif _safe(lambda: step.isUnlocked(), False):
+                    # AVAILABLE FRONTIER: not received but prerequisites met
+                    # (isUnlocked() resolves the DAG parent rule). These become the
+                    # clickable "Upgrades Available:" chips. isLocked() is its inverse
+                    # (prereqs not met) -- verified live: only reachable nodes are
+                    # isUnlocked. getImageName() is the perk basename -> full URL via
+                    # _skilltree_icon; the localized name is generic, so humanize it.
+                    image_name = _safe(lambda: step.action.getImageName(), "") or ""
+                    available.append(t.ProgressionStep(
+                        step_id=step_id, name=_skilltree_name(step.action, node_type),
+                        icon=_skilltree_icon(node_type, image_name),
+                        xp_cost=xp_cost, unlocked=False))
+                # the signature 'final' upgrade -> its icon + name + cost for the end
+                # tick (which carries a tooltip like the available chips).
+                if node_type == "final" and not final_icon:
+                    action = getattr(step, "action", None)
+                    if action is not None:
+                        image_name = _safe(lambda: action.getImageName(), "") or ""
+                        final_icon = _skilltree_icon("final", image_name)
+                        final_name = _skilltree_name(action, "final")
+                        final_xp = xp_cost
             except Exception:
                 LOG_CURRENT_EXCEPTION()
                 continue
-        return total_xp, spent_xp, done, total
+        return (total_xp, spent_xp, done, total, final_icon, final_name, final_xp,
+                available)
     except Exception:
         LOG_CURRENT_EXCEPTION()
-        return 0, 0, 0, 0
+        return 0, 0, 0, 0, "", "", 0, []
 
 
 def _read_post_progression(veh):

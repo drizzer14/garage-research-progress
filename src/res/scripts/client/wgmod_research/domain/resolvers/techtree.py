@@ -17,5 +17,5 @@ def resolve(snapshot):
             xp_position=running, category=u.kind, icon=u.icon, name=u.name,
             xp_gained=0, xp_required=u.xp_cost,
             affordable=(running <= spendable), completed=False,
-            locked=not u.prereqs_met))
+            locked=not u.prereqs_met, action_id=u.int_cd))
     return ticks

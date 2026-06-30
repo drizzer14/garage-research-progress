@@ -30,7 +30,7 @@ class Mode(object):
 class Tick(object):
     def __init__(self, xp_position, category, icon, name,
                  xp_gained, xp_required, affordable, completed, locked=False,
-                 level=0, options=None, state=""):
+                 level=0, options=None, state="", action_id=0):
         self.xp_position = xp_position
         # vehicle | module (tech-tree unlock kind) | fieldmod. Drives the
         # per-tick glyph in the view (a bar is all-tech-tree or all-field-mods,
@@ -57,6 +57,11 @@ class Tick(object):
         # tech-tree / field-mod ticks). Drives the grade-pip / reward-thumbnail
         # coloring in the ELITE and ELITE_REWARDS views.
         self.state = state
+        # Identity carried for clickable ticks: the tech-tree unlock int_cd
+        # (category 'vehicle'/'module') or the field-mod step_id (category
+        # 'fieldmod'). 0 for ticks that aren't individually actionable
+        # (skill-tree nodes, elite/reward marks).
+        self.action_id = action_id
 
 
 class UnlockItem(object):
@@ -125,7 +130,9 @@ class VehicleSnapshot(object):
                  elite_current_xp=0, elite_next_xp=0,
                  elite_grades=None, elite_rewards=None, elite_level_xp=None,
                  is_skill_tree=False, skilltree_total_xp=0,
-                 skilltree_spent_xp=0, skilltree_done=0, skilltree_total=0):
+                 skilltree_spent_xp=0, skilltree_done=0, skilltree_total=0,
+                 skilltree_final_icon="", skilltree_final_name="",
+                 skilltree_final_xp=0, skilltree_available=None):
         self.tier = tier                          # 1..11
         self.is_elite = is_elite                  # True = fully researched
         self.vehicle_xp = vehicle_xp              # unspent accumulated vehicle XP
@@ -150,15 +157,23 @@ class VehicleSnapshot(object):
         # {level -> cumulative combat XP required to REACH that level}. Used to
         # show each milestone's XP "cost" in its tooltip. Empty if unavailable.
         self.elite_level_xp = elite_level_xp or {}
-        # --- Tier-XI "vehicle skill tree" upgrade (branching post-progression). A
-        # skill-tree vehicle is shown as an aggregate, monotonic "% upgraded"
-        # readout: the bar axis is the FIXED full-upgrade cost and the fill is the
-        # cumulative XP already invested (it only grows as nodes are unlocked). ---
+        # --- Tier-XI "vehicle skill tree" upgrade (branching post-progression).
+        # The tree is non-linear, so the bar is a COUNT readout: axis = total
+        # priced nodes, fill = nodes unlocked, with one tick per node and the
+        # signature 'final' node flagged at the end. XP totals are kept for
+        # reference but no longer drive the bar. ---
         self.is_skill_tree = is_skill_tree              # branching upgrade tree (id >= 10000)
-        self.skilltree_total_xp = skilltree_total_xp    # fixed full-upgrade cost (sum of ALL priced nodes)
-        self.skilltree_spent_xp = skilltree_spent_xp    # cumulative XP invested (sum of RECEIVED node prices)
+        self.skilltree_total_xp = skilltree_total_xp    # full-upgrade cost (sum of ALL priced nodes); informational
+        self.skilltree_spent_xp = skilltree_spent_xp    # XP invested (sum of RECEIVED node prices); informational
         self.skilltree_done = skilltree_done            # unlocked nodes
         self.skilltree_total = skilltree_total          # total priced nodes
+        self.skilltree_final_icon = skilltree_final_icon  # img:// art of the 'final' node (end tick)
+        self.skilltree_final_name = skilltree_final_name  # final node name (end-tick tooltip)
+        self.skilltree_final_xp = skilltree_final_xp      # final node XP cost (end-tick tooltip)
+        # Available frontier upgrade nodes (not received, prerequisites met) ->
+        # the clickable "Upgrades Available:" chips. [ProgressionStep] (step_id,
+        # name, icon, xp_cost). Empty for non-skill-tree vehicles.
+        self.skilltree_available = skilltree_available or []
 
 
 class ResearchProgressModel(object):
@@ -168,7 +183,7 @@ class ResearchProgressModel(object):
                  fill_vehicle, fill_free, ticks,
                  fieldmods_done=0, fieldmods_total=0, vehicle_class="",
                  elite_level=0, elite_max_level=0, elite_grade="", elite_sub=0,
-                 combat_xp=0):
+                 combat_xp=0, avail_upgrades=None):
         self.mode = mode
         self.scale_min = scale_min
         self.scale_max = scale_max
@@ -185,3 +200,6 @@ class ResearchProgressModel(object):
         self.elite_grade = elite_grade         # complex-grade family id
         self.elite_sub = elite_sub             # current sub-grade (1..4)
         self.combat_xp = combat_xp             # cumulative combat XP readout
+        # SKILL_TREE mode: available frontier upgrade nodes (clickable chips).
+        # [ProgressionStep] (step_id, name, icon, xp_cost). Empty in other modes.
+        self.avail_upgrades = avail_upgrades or []
