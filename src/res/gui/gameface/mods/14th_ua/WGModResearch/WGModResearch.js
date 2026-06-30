@@ -343,17 +343,15 @@ function chipAt(hotEl, clientX, clientY) {
     return null;
 }
 
-// Toggle the framed chip tooltip (+ a hover lift) for the hovered chip, clearing any
+// Toggle the framed chip tooltip for the hovered chip, clearing any
 // previously-active one. Driven from the .wg-hot handler, not CSS :hover.
 function setActiveChip(hotEl, chip) {
     const prev = hotEl._wgActiveChip;
     if (prev && prev !== chip) {
         prev.tip.style.display = "none";
-        prev.el.classList.remove("wg-chip-hot");
     }
     if (chip) {
         chip.tip.style.display = "block";
-        chip.el.classList.add("wg-chip-hot");
     }
     hotEl._wgActiveChip = chip || null;
 }

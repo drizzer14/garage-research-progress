@@ -699,9 +699,7 @@
     height: 30rem;
     margin-right: 8rem;
     pointer-events: none;       /* visual only; .wg-hot hit-tests + handles hover/click */
-    transition: transform 0.12s ease;   /* ease the hover lift below */
 }
-#wgmod-root .wg-chip-hot { transform: scale(1.1); }   /* JS-toggled hover lift */
 /* frame: a thin light ring over a translucent dark disc, centered in the box --
    matching the Upgrades screen (minor = circle, major = diamond). */
 #wgmod-root .wg-chip-frame {
