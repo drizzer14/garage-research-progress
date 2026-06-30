@@ -89,6 +89,11 @@ python tools/dev/sync_gameface.py "<install>" 2.3.0.1
   deploy via `deploy_wotmod.py` and keep `res_mods` clean for ship verification.
 - Built for the **Wargaming EU/global** client (version 2.3.0.1) only.
 
+## License
+
+Free to use, redistribute, and include in modpacks as long as it stays free and credits
+the author (drizzer14) with a link back to this repository — see [`LICENSE.md`](./LICENSE.md).
+
 ## Renaming the mod
 
 Change `<id>`, `<version>`, `<name>`, `<description>` in `src/meta.xml`, and update

@@ -4,11 +4,24 @@ Recorded ideas for the mod. Entries are deleted once implemented.
 
 ## Open
 
-### Drop shadow on the progress bar
-Add a shadow to the whole progress bar so it stands out more against the garage background. Improves legibility/visual separation from the busy 3D scene behind it.
+### Tier-XI mode: "Final upgrade available" state
+In tier-XI upgrade (skill-tree) mode, when only the final upgrade remains available,
+drop the "Next available" chips block and instead show a "Final upgrade available"
+label near the rightmost tick.
 
-### Fill-tone tuning for the skill-tree bar
-The `skill_tree` bar mode currently reuses the default combat-XP fill tone. A `.wg-skill` CSS hook is already in place (`src/res/gui/gameface/mods/drizzer14/WGModResearch/WGModResearch.js:484`, marked "later fill-tone tuning") — give it its own distinct color.
+### Transitions / animations (if possible)
+Add smooth CSS transitions for state changes — fill growth, hover scaling, show/hide,
+mode switches — instead of hard cuts. Subject to what Gameface supports (some CSS is
+clipped/dropped); confirm feasibility before relying on it.
+
+### Enlarge ticks on hover
+On hover, scale up the bar's ticks for emphasis/affordance, matching the hover
+behavior already used for the tier-XI progression (skill-tree) chips/upgrades.
+
+### Prepare for release on wgmods.net
+Get the mod ready for publishing on the official WG mods portal (wgmods.net): whatever
+the portal requires — listing/description, compatibility info, packaging — plus
+**screenshots** of the bar in-game (to be taken by the author) for the listing.
 
 ### Draggable bar position (feasibility unknown)
 Let the user drag the bar to reposition it, to avoid overlap/conflicts with other
