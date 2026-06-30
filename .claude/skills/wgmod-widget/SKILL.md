@@ -1,11 +1,11 @@
 ---
 name: wgmod-widget
-description: Front-end (Gameface HTML/CSS/JS) conventions for the Research Progress Bar WoT mod's widget — the DOM structure, the img:// game-icon URL maps, the pointer-events layering, per-mode render branches, hover/click hit-testing, and Gameface CSS quirks. Use whenever editing WGModResearch.js or WGModResearch.css, changing how the bar/ticks/tooltips/chips look or behave, fixing a glyph or icon, adjusting hover/click behavior, or wiring a new tick category into the renderer.
+description: Front-end (Gameface HTML/CSS/JS) conventions for the Garage Progress Bar WoT mod's widget — the DOM structure, the img:// game-icon URL maps, the pointer-events layering, per-mode render branches, hover/click hit-testing, and Gameface CSS quirks. Use whenever editing WGModResearch.js or WGModResearch.css, changing how the bar/ticks/tooltips/chips look or behave, fixing a glyph or icon, adjusting hover/click behavior, or wiring a new tick category into the renderer.
 ---
 
 # wgmod widget (front-end) conventions
 
-The widget is `src/res/gui/gameface/mods/drizzer14/WGModResearch/WGModResearch.{js,css}`,
+The widget is `src/res/gui/gameface/mods/14th_ua/WGModResearch/WGModResearch.{js,css}`,
 injected into the hangar document by OpenWG. It reads the Python data model (exposed as
 `wgResearch`) via `ModelObserver("WGModResearch")` and renders a single-axis XP bar.
 For the Python side that produces that model, see the **wgmod-architecture** skill.

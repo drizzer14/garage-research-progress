@@ -1,6 +1,6 @@
 ---
 name: wgmod-release
-description: Cut a release of the Research Progress Bar WoT mod — bump the version across all 7 files, commit and tag, build the .wotmod + Windows installer + consumer zip, and publish the GitHub release. Use whenever the user wants to bump the version, ship/release/publish a new version, build the Setup .exe installer, or create a GitHub release for this mod.
+description: Cut a release of the Garage Progress Bar WoT mod — bump the version across all 7 files, commit and tag, build the .wotmod + Windows installer + consumer zip, and publish the GitHub release. Use whenever the user wants to bump the version, ship/release/publish a new version, build the Setup .exe installer, or create a GitHub release for this mod.
 ---
 
 # Releasing the wgmod
@@ -29,8 +29,8 @@ are NEVER committed.
 
 ## 3. Build the artifacts (into gitignored dist/)
 ```powershell
-& "C:\Python27\python.exe" build\build_wotmod.py        # -> dist\com.drizzer14.wgmod_X.Y.Z.wotmod
-pwsh installer\build_installer.ps1                       # -> dist\ResearchProgressBar-Setup-X.Y.Z.exe
+& "C:\Python27\python.exe" build\build_wotmod.py        # -> dist\com.14th_ua.garageprogressbar_X.Y.Z.wotmod
+pwsh installer\build_installer.ps1                       # -> dist\GarageProgressBar-Setup-X.Y.Z.exe
 ```
 The installer needs the `.wotmod` already built and
 `installer\vendor\net.openwg.gameface_1.1.6.wotmod` present.
@@ -38,23 +38,23 @@ The installer needs the `.wotmod` already built and
 Consumer zip has NO committed generator — hand-assemble: bump version strings in
 `dist\INSTALL.txt`, then
 ```powershell
-Compress-Archive -Path dist\com.drizzer14.wgmod_X.Y.Z.wotmod,dist\INSTALL.txt `
+Compress-Archive -Path dist\com.14th_ua.garageprogressbar_X.Y.Z.wotmod,dist\INSTALL.txt `
   -DestinationPath dist\Research-Progress-Bar_X.Y.Z.zip          # flat root, 2 files
 ```
 
 ## 4. Publish the GitHub Release (every version gets a full release, not just a tag)
 All 3 assets:
 ```powershell
-gh release create vX.Y.Z --title "Research Progress Bar vX.Y.Z" --notes-file <body.md> `
-  dist\ResearchProgressBar-Setup-X.Y.Z.exe `
-  dist\com.drizzer14.wgmod_X.Y.Z.wotmod `
+gh release create vX.Y.Z --title "Garage Progress Bar vX.Y.Z" --notes-file <body.md> `
+  dist\GarageProgressBar-Setup-X.Y.Z.exe `
+  dist\com.14th_ua.garageprogressbar_X.Y.Z.wotmod `
   dist\Research-Progress-Bar_X.Y.Z.zip
 ```
 Body: intro blurb + `### What's new in X.Y.Z` + Requirements + Install (recommended,
 .exe) + Manual install (.wotmod).
 
 ## Machine state
-- `gh` at `C:\Program Files\GitHub CLI\gh`, authed as drizzer14.
+- `gh` at `C:\Program Files\GitHub CLI\gh`, authed as 14th_ua.
 - `ISCC.exe` at `%LOCALAPPDATA%\Programs\Inno Setup 6\` (Find-ISCC checks there).
 
 For building/deploying/verifying mechanics see the **wgmod-build-deploy** skill.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """DEV: drive the in-game WoT REPL (the wgmod_debug mod) from the host PC.
 
-The debug mod (tools/dev/mod_wgmod_debug.py, packaged as com.drizzer14.wgmod_debug.wotmod)
+The debug mod (tools/dev/mod_wgmod_debug.py, packaged as com.14th_ua.garageprogressbar_debug.wotmod)
 runs a TCP REPL on 127.0.0.1:2223 inside the live client. This client sends one
 command per line and reads until the server's __WGEND__ sentinel.
 
@@ -72,7 +72,7 @@ def main():
             print("-" * 60)
     except (ConnectionRefusedError, OSError) as e:
         print("CONNECT FAILED: %s" % e)
-        print("Is WoT running with com.drizzer14.wgmod_debug.wotmod, and in the Garage?")
+        print("Is WoT running with com.14th_ua.garageprogressbar_debug.wotmod, and in the Garage?")
         sys.exit(1)
 
 

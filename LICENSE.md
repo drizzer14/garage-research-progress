@@ -1,7 +1,7 @@
 # License
 
-**Research Progress Bar** — a World of Tanks mod
-Copyright © 2026 drizzer14 · https://github.com/drizzer14/wgmod-research-progress
+**Garage Progress Bar** — a World of Tanks mod
+Copyright © 2026 14th_ua · https://github.com/drizzer14/wgmod-research-progress
 
 This mod is free. You may:
 
@@ -9,7 +9,7 @@ This mod is free. You may:
 - **Redistribute** it and **include it in modpacks**, provided that:
   - it remains **free of charge** (no selling, paywalls, ad-gates, or "premium"
     bundling), and
-  - the original author (**drizzer14**) is **credited** and a link to the source
+  - the original author (**14th_ua**) is **credited** and a link to the source
     repository above is kept.
 - **Modify** it and share your changes under these same terms, keeping the credit
   and source link.

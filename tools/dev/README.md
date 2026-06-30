@@ -17,7 +17,7 @@ Loose `res_mods\<version>\scripts` does **not** load in 2.3, and `res_mods` outr
 & "C:\Python27\python.exe" build\deploy_wotmod.py "D:\Games\World_of_Tanks_EU" 2.3.0.1
 # 2) relaunch the client. (OpenWG may auto-restart once when res_map changes.)
 ```
-`deploy_wotmod.py` auto-cleans old `com.drizzer14.wgmod_[0-9]*.wotmod` and loose leftovers.
+`deploy_wotmod.py` auto-cleans old `com.14th_ua.garageprogressbar_[0-9]*.wotmod` and loose leftovers.
 
 ### Hot-reload loop for JS/CSS-only changes (NO relaunch)
 `coui://gui/...` resolves through a merged FS where `res_mods/<version>/` outranks
@@ -31,7 +31,7 @@ is rebuilt. So for **visual-only** (WGModResearch.js/.css) iteration:
 This is ONLY for front-end assets. Python (mount/data) changes still need
 build+deploy+relaunch. **Caveats:** after every `deploy_wotmod.py`, re-run
 `sync_gameface.py` (else the stale overlay shadows the fresh package); and **remove
-the overlay** (`res_mods\2.3.0.1\gui\gameface\mods\drizzer14\`) before a clean
+the overlay** (`res_mods\2.3.0.1\gui\gameface\mods\14th_ua\`) before a clean
 ship-verification so you're testing the packaged assets.
 
 Unit tests (engine-free domain layer, Python 3):
@@ -40,7 +40,7 @@ Unit tests (engine-free domain layer, Python 3):
 ```
 
 ## Debug REPL (live introspection)
-`com.drizzer14.wgmod_debug.wotmod` runs a TCP REPL on **127.0.0.1:2223** in the client.
+`com.14th_ua.garageprogressbar_debug.wotmod` runs a TCP REPL on **127.0.0.1:2223** in the client.
 - Build/deploy it (client closed):
   `& "C:\Python27\python.exe" tools\dev\build_debug_wotmod.py "D:\Games\World_of_Tanks_EU" 2.3.0.1`
 - Drive it from the host (client running, in Garage):

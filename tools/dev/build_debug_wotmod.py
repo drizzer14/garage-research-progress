@@ -3,7 +3,7 @@
 
   python tools/dev/build_debug_wotmod.py "D:/Games/World_of_Tanks_EU" 2.3.0.1
 
-Produces com.drizzer14.wgmod_debug.wotmod (slim: just mod_wgmod_debug.pyc) and
+Produces com.14th_ua.garageprogressbar_debug.wotmod (slim: just mod_wgmod_debug.pyc) and
 drops it in mods/<version>/. Keep it slim so it never conflicts with the real
 mod's wgmod_research package. Requires the client to be CLOSED. Restart after.
 """
@@ -16,7 +16,7 @@ import shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 META = """<root>
-    <id>com.drizzer14.wgmod_debug</id>
+    <id>com.14th_ua.garageprogressbar_debug</id>
     <version>0.0.1</version>
     <name>WGMod Debug REPL</name>
     <description>DEV-ONLY: TCP REPL on 127.0.0.1:2223. Not for distribution.</description>
@@ -29,7 +29,7 @@ def main():
         print('Usage: python tools/dev/build_debug_wotmod.py "<wot_path>" <version>')
         sys.exit(1)
     wot_path, version = sys.argv[1], sys.argv[2]
-    out = os.path.join(wot_path, "mods", version, "com.drizzer14.wgmod_debug.wotmod")
+    out = os.path.join(wot_path, "mods", version, "com.14th_ua.garageprogressbar_debug.wotmod")
 
     stage = os.path.join(HERE, "_stage_debug")
     mods_dir = os.path.join(stage, "res", "scripts", "client", "gui", "mods")

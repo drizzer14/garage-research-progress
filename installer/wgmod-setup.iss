@@ -1,4 +1,4 @@
-; Research Progress Bar - Windows installer (Inno Setup 6.x)
+; Garage Progress Bar - Windows installer (Inno Setup 6.x)
 ;
 ; What it does, one double-click:
 ;   1. Detects the World of Tanks install folder (registry + common paths), lets
@@ -12,17 +12,17 @@
 ; Build:  see installer\build_installer.ps1  (needs Inno Setup's ISCC + the mod
 ;         .wotmod already built into ..\dist by build\build_wotmod.py).
 
-#define ModId        "com.drizzer14.wgmod"
+#define ModId        "com.14th_ua.garageprogressbar"
 #define ModVersion   "0.1.2"
-#define ModWotmod    "com.drizzer14.wgmod_0.1.2.wotmod"
+#define ModWotmod    "com.14th_ua.garageprogressbar_0.1.2.wotmod"
 #define OpenWgWotmod "net.openwg.gameface_1.1.6.wotmod"
 #define MsaWotmod    "izeberg.modssettingsapi_1.7.0.wotmod"
 
 [Setup]
 AppId={{8B6A1C3E-9D42-4F7A-BE1C-0D2F7C4A9E51}
-AppName=Research Progress Bar
+AppName=Garage Progress Bar
 AppVersion={#ModVersion}
-AppPublisher=drizzer14
+AppPublisher=14th_ua
 AppPublisherURL=https://github.com/drizzer14/wgmod-research-progress
 DefaultDirName={code:DetectWotRoot}
 DisableProgramGroupPage=yes
@@ -31,14 +31,14 @@ DirExistsWarning=no
 AppendDefaultDirName=no
 UsePreviousAppDir=no
 OutputDir=..\dist
-OutputBaseFilename=ResearchProgressBar-Setup-{#ModVersion}
+OutputBaseFilename=GarageProgressBar-Setup-{#ModVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayName=Research Progress Bar (WoT mod)
+UninstallDisplayName=Garage Progress Bar (WoT mod)
 
 [Files]
 ; The mod itself -> mods\<version>\
@@ -52,7 +52,7 @@ Source: "vendor\{#MsaWotmod}"; DestDir: "{code:GetModsVersionDir}"; Flags: ignor
 
 [Messages]
 ; Repurpose the "Select Destination Location" page for picking the WoT root.
-SelectDirLabel3=Setup will install Research Progress Bar into the [name] mods folder of the World of Tanks installation below.
+SelectDirLabel3=Setup will install Garage Progress Bar into the [name] mods folder of the World of Tanks installation below.
 SelectDirBrowseLabel=Confirm your World of Tanks installation folder (the one containing version.xml). To continue, click Next. To choose a different folder, click Browse.
 
 [Code]
@@ -318,6 +318,9 @@ begin
     modsDir := GetModsVersionDir('');
     { remove older builds of THIS mod (keep filenames stable across versions) }
     DelTree(modsDir + '\' + '{#ModId}' + '_*.wotmod', False, True, False);
+    { one-time migration: remove the pre-rename id (com.drizzer14.wgmod_*) so an
+      upgrading user doesn't end up with two bars loaded side by side }
+    DelTree(modsDir + '\com.drizzer14.wgmod_*.wotmod', False, True, False);
     { remove our stale loose res_mods leftovers (these would shadow the package) }
     resMods := ExpandConstant('{app}') + '\res_mods\' + GVersion;
     DeleteFile(resMods + '\scripts\client\gui\mods\mod_wgmod.py');

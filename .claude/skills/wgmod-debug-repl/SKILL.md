@@ -1,6 +1,6 @@
 ---
 name: wgmod-debug-repl
-description: Live in-client introspection for the Research Progress Bar WoT mod via its debug TCP REPL, plus dev-loop troubleshooting (the bar not showing, stale assets, finding game symbols in the decompiled client). Use whenever you need to inspect live game state from the running client, probe BigWorld/WG APIs interactively, figure out why the bar isn't loading or updating in-game, or locate the right game method/symbol against the decompiled source.
+description: Live in-client introspection for the Garage Progress Bar WoT mod via its debug TCP REPL, plus dev-loop troubleshooting (the bar not showing, stale assets, finding game symbols in the decompiled client). Use whenever you need to inspect live game state from the running client, probe BigWorld/WG APIs interactively, figure out why the bar isn't loading or updating in-game, or locate the right game method/symbol against the decompiled source.
 ---
 
 # Live introspection & dev-loop troubleshooting

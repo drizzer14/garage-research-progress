@@ -16,7 +16,7 @@ only owns the settings storage + the live-apply on change.
 from debug_utils import LOG_CURRENT_EXCEPTION, LOG_NOTE
 
 # Our mod's reverse-domain id, reused as the MSA "linkage" (panel identity / storage key).
-LINKAGE = "com.drizzer14.wgmod"
+LINKAGE = "com.14th_ua.garageprogressbar"
 
 DEFAULTS = {"hideAlways": False, "hideWhenComplete": False}
 
@@ -34,7 +34,7 @@ def _template():
     """The MSA panel descriptor. Two checkboxes, both defaulting to False so a fresh
     install shows the bar everywhere until the user opts to hide it."""
     return {
-        "modDisplayName": "Research Progress Bar",
+        "modDisplayName": "Garage Progress Bar",
         "enabled": True,
         "column1": [
             {

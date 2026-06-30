@@ -23,7 +23,7 @@ import os
 import shutil
 import sys
 
-REL = os.path.join("gui", "gameface", "mods", "drizzer14", "WGModResearch")
+REL = os.path.join("gui", "gameface", "mods", "14th_ua", "WGModResearch")
 ASSETS = ("WGModResearch.js", "WGModResearch.css")
 
 

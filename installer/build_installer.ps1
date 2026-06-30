@@ -1,6 +1,6 @@
 #requires -Version 5
 <#
-    Build the Research Progress Bar Windows installer (setup.exe) with Inno Setup.
+    Build the Garage Progress Bar Windows installer (setup.exe) with Inno Setup.
 
     Prerequisites:
       1. The mod .wotmod must already be built into ..\dist by the Python 2.7 build:
@@ -11,7 +11,7 @@
     Usage:
         pwsh installer\build_installer.ps1
     Output:
-        dist\ResearchProgressBar-Setup-<version>.exe
+        dist\GarageProgressBar-Setup-<version>.exe
 #>
 [CmdletBinding()]
 param()
@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 $InstallerDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot     = Split-Path -Parent $InstallerDir
 $Iss          = Join-Path $InstallerDir 'wgmod-setup.iss'
-$ModWotmod    = Join-Path $RepoRoot 'dist\com.drizzer14.wgmod_0.1.2.wotmod'
+$ModWotmod    = Join-Path $RepoRoot 'dist\com.14th_ua.garageprogressbar_0.1.2.wotmod'
 $OpenWg       = Join-Path $InstallerDir 'vendor\net.openwg.gameface_1.1.6.wotmod'
 $Msa          = Join-Path $InstallerDir 'vendor\izeberg.modssettingsapi_1.7.0.wotmod'
 
@@ -65,7 +65,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "ISCC failed with exit code $LASTEXITCODE"
 }
 
-$out = Get-ChildItem (Join-Path $RepoRoot 'dist') -Filter 'ResearchProgressBar-Setup-*.exe' |
+$out = Get-ChildItem (Join-Path $RepoRoot 'dist') -Filter 'GarageProgressBar-Setup-*.exe' |
        Sort-Object LastWriteTime -Descending | Select-Object -First 1
 Write-Host ''
 Write-Host "Built installer: $($out.FullName)" -ForegroundColor Green

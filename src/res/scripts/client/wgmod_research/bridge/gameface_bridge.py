@@ -26,7 +26,7 @@ import openwg_gameface
 
 WIDGET_NAME = "WGModResearch"
 DATA_PROP = "wgResearch"
-COUI = "coui://gui/gameface/mods/drizzer14/WGModResearch"
+COUI = "coui://gui/gameface/mods/14th_ua/WGModResearch"
 
 # (host_vm, rvm) for the currently-mounted widget. Importable so the entry point
 # and the dev REPL can drive refreshes without poking module-private state.

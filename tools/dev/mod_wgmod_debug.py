@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DEV-ONLY: TCP REPL into the running WoT client (adapted from juho-p/wot-debugserver).
 
-Packaged as com.drizzer14.wgmod_debug.wotmod (see build_debug_wotmod.py) and dropped
+Packaged as com.14th_ua.garageprogressbar_debug.wotmod (see build_debug_wotmod.py) and dropped
 in mods/<version>/. Listens on 127.0.0.1:2223. NOT shipped with the real mod.
 IMPORTANT: keep this package SLIM (only this file) so it does not conflict with the
 real mod's wgmod_research package (duplicate files make WoT ignore the whole package).

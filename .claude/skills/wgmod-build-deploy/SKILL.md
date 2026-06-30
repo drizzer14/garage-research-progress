@@ -1,6 +1,6 @@
 ---
 name: wgmod-build-deploy
-description: Build, deploy, test, and hot-reload the Research Progress Bar WoT mod locally. Use whenever building the .wotmod package, deploying into a local World of Tanks install, running the pytest suite, hot-reloading JS/CSS changes, or verifying a change in-game — anything about getting a change running and observed in the game. Covers the Python 2.7-vs-3.13 split and the mods/ vs res_mods/ shadowing trap that silently hides your build. (For live in-client REPL introspection, see the wgmod-debug-repl skill.)
+description: Build, deploy, test, and hot-reload the Garage Progress Bar WoT mod locally. Use whenever building the .wotmod package, deploying into a local World of Tanks install, running the pytest suite, hot-reloading JS/CSS changes, or verifying a change in-game — anything about getting a change running and observed in the game. Covers the Python 2.7-vs-3.13 split and the mods/ vs res_mods/ shadowing trap that silently hides your build. (For live in-client REPL introspection, see the wgmod-debug-repl skill.)
 ---
 
 # Building, deploying & testing the wgmod
@@ -12,7 +12,7 @@ description: Build, deploy, test, and hot-reload the Research Progress Bar WoT m
 
 ## Commands
 ```sh
-# Build the package (Py 2.7) -> dist/com.drizzer14.wgmod_<version>.wotmod
+# Build the package (Py 2.7) -> dist/com.14th_ua.garageprogressbar_<version>.wotmod
 & "C:\Python27\python.exe" build/build_wotmod.py
 
 # Clean-build-and-deploy into a local install (Py 2.7, CLIENT CLOSED — file locks)
@@ -37,7 +37,7 @@ deploy through it, never hand-copy.
 - After EVERY `deploy_wotmod.py`, re-run `sync_gameface.py` (else the stale overlay
   shadows the fresh package).
 - Before a clean ship-verification, REMOVE the overlay
-  (`res_mods/<ver>/gui/gameface/mods/drizzer14/`) so you test the packaged assets.
+  (`res_mods/<ver>/gui/gameface/mods/14th_ua/`) so you test the packaged assets.
 - Only `WGModResearch.js`/`.css` hot-reload. Python (mount/data) changes need
   build + deploy + full client relaunch.
 

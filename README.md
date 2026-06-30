@@ -1,4 +1,4 @@
-# Research Progress Bar — World of Tanks mod
+# Garage Progress Bar — World of Tanks mod
 
 Adds a Garage progress bar that shows the selected vehicle's progression — tech-tree
 research, Field Modifications, Elite Levels (prestige) grades + tier-XI reward track,
@@ -12,13 +12,13 @@ Target client: **WoT EU 2.3.0.1**. Hard dependency: **OpenWG GameFace**. Optiona
 
 ## For players (installing)
 
-**Easiest: run the installer.** `dist/ResearchProgressBar-Setup-<version>.exe` finds
+**Easiest: run the installer.** `dist/GarageProgressBar-Setup-<version>.exe` finds
 your World of Tanks folder, installs the **OpenWG GameFace** and **ModsSettingsAPI**
 dependencies for you only if they're missing, and drops the mod into `mods\<version>\`
 (close the game first). See [`installer/README.md`](./installer/README.md).
 
 Prefer to do it by hand? See **[`INSTALL.md`](./INSTALL.md)** — the raw mod is built to
-`dist/com.drizzer14.wgmod_<version>.wotmod` and requires OpenWG GameFace installed
+`dist/com.14th_ua.garageprogressbar_<version>.wotmod` and requires OpenWG GameFace installed
 separately.
 
 ## For developers
@@ -33,13 +33,13 @@ src/
   meta.xml                                         # .wotmod metadata (id, version, name, description)
   res/scripts/client/gui/mods/mod_wgmod.py         # entry point: patches the hangar presenter
   res/scripts/client/wgmod_research/               # domain (engine-free) + adapter + bridge
-  res/gui/gameface/mods/drizzer14/WGModResearch/   # widget JS + CSS (rendered via OpenWG GameFace)
+  res/gui/gameface/mods/14th_ua/WGModResearch/   # widget JS + CSS (rendered via OpenWG GameFace)
 build/
   build_wotmod.py    # compile (.py->.pyc) + package -> dist/<id>_<version>.wotmod   (Python 2.7!)
   deploy_wotmod.py   # clean + build + copy the .wotmod into a WoT install            (Python 2.7!)
   deploy_dev.py      # DEPRECATED — loose res_mods scripts do NOT load in WoT 2.3; use deploy_wotmod.py
 installer/
-  wgmod-setup.iss      # Inno Setup script -> dist/ResearchProgressBar-Setup-<version>.exe
+  wgmod-setup.iss      # Inno Setup script -> dist/GarageProgressBar-Setup-<version>.exe
   build_installer.ps1  # locate ISCC + compile the installer
   vendor/              # bundled OpenWG GameFace + ModsSettingsAPI .wotmods (installed only if missing)
 tests/               # pytest (run with Python 3.13) for the domain layer
@@ -50,7 +50,7 @@ dist/                # build output (gitignored)
 ### Build a distributable package (Python 2.7.18)
 
 ```sh
-python build/build_wotmod.py        # -> dist/com.drizzer14.wgmod_0.1.2.wotmod
+python build/build_wotmod.py        # -> dist/com.14th_ua.garageprogressbar_0.1.2.wotmod
 ```
 
 ### Build + deploy into a local WoT install (Python 2.7.18, client CLOSED)
@@ -92,7 +92,7 @@ python tools/dev/sync_gameface.py "<install>" 2.3.0.1
 ## License
 
 Free to use, redistribute, and include in modpacks as long as it stays free and credits
-the author (drizzer14) with a link back to this repository — see [`LICENSE.md`](./LICENSE.md).
+the author (14th_ua) with a link back to this repository — see [`LICENSE.md`](./LICENSE.md).
 
 ## Renaming the mod
 

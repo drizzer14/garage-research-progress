@@ -1,7 +1,7 @@
 # Windows installer
 
 A one-double-click `setup.exe` (built with [Inno Setup](https://jrsoftware.org/isinfo.php)) that
-installs the Research Progress Bar mod and its dependencies — **OpenWG GameFace**
+installs the Garage Progress Bar mod and its dependencies — **OpenWG GameFace**
 (required) and **ModsSettingsAPI** (for the in-game settings panel).
 
 ## What the installer does for end users
@@ -20,7 +20,7 @@ installs the Research Progress Bar mod and its dependencies — **OpenWG GameFac
    already ship). If absent, it copies the bundled
    `izeberg.modssettingsapi_1.7.0.wotmod` in. This powers the in-game settings panel;
    the bar still works without it (it just falls back to its default visibility).
-5. **Cleans + installs the mod** — removes older `com.drizzer14.wgmod_*.wotmod`
+5. **Cleans + installs the mod** — removes older `com.14th_ua.garageprogressbar_*.wotmod`
    builds (and stale loose `res_mods\<version>\` leftovers that would shadow the
    package), then installs the current `.wotmod`.
 6. **Reminds** the user to fully restart the client.
@@ -48,13 +48,13 @@ bump the matching `OpenWgWotmod` / `MsaWotmod` define in `wgmod-setup.iss`
 
 ```powershell
 # 1. Build the mod package (Python 2.7 — bytecode is version-locked):
-& "C:\Python27\python.exe" build\build_wotmod.py        # -> dist\com.drizzer14.wgmod_0.1.2.wotmod
+& "C:\Python27\python.exe" build\build_wotmod.py        # -> dist\com.14th_ua.garageprogressbar_0.1.2.wotmod
 
 # 2. Install Inno Setup once (provides ISCC.exe):
 winget install -e --id JRSoftware.InnoSetup
 
 # 3. Compile:
-pwsh installer\build_installer.ps1                      # -> dist\ResearchProgressBar-Setup-0.1.2.exe
+pwsh installer\build_installer.ps1                      # -> dist\GarageProgressBar-Setup-0.1.2.exe
 ```
 
 `build_installer.ps1` locates `ISCC.exe`, verifies the mod package and bundled

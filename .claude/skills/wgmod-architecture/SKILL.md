@@ -1,6 +1,6 @@
 ---
 name: wgmod-architecture
-description: Architecture and code conventions for the Research Progress Bar WoT mod — the engine-free domain / adapter / Wulf-bridge layering, the mode state machine, and the Python-side data flows and gotchas (listener re-arming, Wulf MAP-arg, engine-free domain). Use whenever editing or extending the mod's Python, adding a new bar mode, tracing how a click becomes a research action, or debugging why the bar doesn't update. (For the JS/CSS widget rendering, see wgmod-widget; for live game symbols, see references/game-api.md.)
+description: Architecture and code conventions for the Garage Progress Bar WoT mod — the engine-free domain / adapter / Wulf-bridge layering, the mode state machine, and the Python-side data flows and gotchas (listener re-arming, Wulf MAP-arg, engine-free domain). Use whenever editing or extending the mod's Python, adding a new bar mode, tracing how a click becomes a research action, or debugging why the bar doesn't update. (For the JS/CSS widget rendering, see wgmod-widget; for live game symbols, see references/game-api.md.)
 ---
 
 # wgmod architecture & conventions
@@ -18,7 +18,7 @@ src/res/scripts/client/
     domain/types.py                 # engine-free data types (2/3 compatible)
     domain/builder.py               # MODE STATE MACHINE
     domain/resolvers/{techtree,fieldmods,skilltree,elite}.py  # pure snapshot -> ticks
-src/res/gui/gameface/mods/drizzer14/WGModResearch/
+src/res/gui/gameface/mods/14th_ua/WGModResearch/
   WGModResearch.{js,css}            # widget: ModelObserver -> DOM render + click/hover (see wgmod-widget skill)
 ```
 
