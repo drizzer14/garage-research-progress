@@ -356,6 +356,78 @@ function setActiveChip(hotEl, chip) {
     hotEl._wgActiveChip = chip || null;
 }
 
+// --- De-crowding: stack overlapping tick glyphs into vertical lanes ----------
+// The glyphs hung below the bar (tech-tree module/vehicle icons, field-mod
+// hexes, elite emblems/thumbnails) sit at their tick's XP position. When two
+// positions fall close together the glyphs pile on top of each other and become
+// unreadable / hard to click. We greedily assign each crowded glyph a vertical
+// LANE and drop it a row (with a thin stem back to its tick) so every glyph stays
+// legible. Lane 0 is the normal spot, so a bar with no crowding is unchanged, and
+// hover/click stay purely x-based (unaffected by the vertical offset).
+const TICKS_WIDTH_REM = 516;   // .wg-ticks span (root 520rem minus the track's 2rem borders)
+const LANE_STEP_REM = 30;      // vertical drop per extra lane -- clears a ~24-30rem glyph
+const MAX_LANES = 2;           // cap the stagger at two rows (lane 0 + one dropped row)
+// .wg-hot bottom (track-relative) once a row is dropped, so a lane-1 glyph hung
+// ~37rem below the track + up to a 30rem-tall glyph still sits inside the hover
+// overlay and can be hovered directly. Only applied when something actually stacks
+// (CSS keeps the tighter default otherwise, so the drag dead-zone stays small).
+const HOT_BOTTOM_STACKED_REM = -70;
+// Visible glyph footprint (rem) hung below a tick, by mode/category. Half of it
+// (+ a small gap) is the horizontal clearance each glyph needs to not overlap.
+function glyphFootprintRem(t, mode) {
+    if (mode === "elite" || mode === "elite_rewards") return 30;   // emblem / reward thumb
+    if (t.category === "fieldmod") return 18;                      // hex badge
+    if (t.category === "vehicle") return 45;                       // framed tank contour
+    return 24;                                                     // module glyph
+}
+function glyphHalfPct(t, mode) {
+    return ((glyphFootprintRem(t, mode) / 2) + 3) / TICKS_WIDTH_REM * 100;
+}
+// Greedy interval colouring over glyph-bearing ticks (entries {left%, half},
+// nulls for tickless gaps). Sorted by x, each glyph takes the lowest lane whose
+// previous occupant's right edge clears this glyph's left edge, so overlapping
+// neighbours land in different lanes and isolated glyphs stay in lane 0. The
+// stagger is capped at MAX_LANES rows: when every lane is still occupied, the
+// glyph reuses the lane that frees earliest (smallest right edge) to minimise the
+// residual overlap. Sets .lane on each non-null entry; returns the max lane used.
+function assignLanes(place) {
+    const items = place.filter(Boolean).sort(function (a, b) { return a.left - b.left; });
+    const laneRight = [];   // rightmost occupied %-edge, per lane
+    let maxLane = 0;
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const leftEdge = it.left - it.half;
+        let lane = -1;
+        for (let L = 0; L < laneRight.length; L++) {       // lowest free lane
+            if (laneRight[L] <= leftEdge) { lane = L; break; }
+        }
+        if (lane === -1) {
+            if (laneRight.length < MAX_LANES) {
+                lane = laneRight.length;                   // open the next row
+            } else {
+                lane = 0;                                  // capped -> reuse earliest-freeing
+                for (let L = 1; L < laneRight.length; L++) {
+                    if (laneRight[L] < laneRight[lane]) lane = L;
+                }
+            }
+        }
+        it.lane = lane;
+        laneRight[lane] = it.left + it.half;
+        if (lane > maxLane) maxLane = lane;
+    }
+    return maxLane;
+}
+// Drop a glyph into its assigned lane: translate it down a row and draw a thin
+// stem from the tick to it so the association reads clearly. No-op for lane 0.
+function applyLane(mark, glyphEl, lane) {
+    if (!lane || !glyphEl) return;
+    glyphEl.style.transform = "translateX(-50%) translateY(" + (lane * LANE_STEP_REM) + "rem)";
+    const stem = document.createElement("div");
+    stem.className = "wg-tick-stem";
+    stem.style.height = (lane * LANE_STEP_REM) + "rem";
+    mark.appendChild(stem);
+}
+
 function render(model) {
     const root = ensureRoot();
     const label = root.querySelector(".wg-label");
@@ -444,6 +516,10 @@ function render(model) {
     // glyphs below it, so hovering an icon registers too.
     ensureHover(hotEl, tipEl);
     hotEl._wgMode = mode;   // gates the tick-hover proximity (skill_tree only)
+    // Default hover-overlay height (CSS); the tick loop below grows it only when a
+    // glyph row is dropped. Reset here so a prior vehicle's stacked height doesn't
+    // linger on this one (incl. the COMPLETE early-return just below).
+    hotEl.style.bottom = "";
     // Tier-XI available-upgrade chips: render the visuals + register their hit-zones
     // on .wg-hot (which owns pointer events). Rebuild ONLY when the upgrade set
     // changes, so a hovered chip's tooltip isn't wiped by background pushes.
@@ -522,6 +598,19 @@ function render(model) {
     // Field mods unlock linearly (one by one), so only the NEXT one -- the first
     // remaining tick -- is ever clickable. Consumed on the first fieldmod seen.
     let nextFieldMod = true;
+    // Pre-pass: glyph positions + footprints, so overlapping glyphs can be
+    // staggered into vertical lanes (de-crowding) before they're hung below the
+    // bar. Only glyph-bearing ticks reserve space; tickless gaps are null.
+    const place = [];
+    for (let i = 0; i < n; i++) {
+        const t = unwrap(ticks[i] !== undefined ? ticks[i] : ticks.get && ticks.get(i));
+        const hasGlyph = t && (t.category === "fieldmod" || !!t.icon);
+        place.push(hasGlyph ? { left: pct(t.position), half: glyphHalfPct(t, mode) } : null);
+    }
+    const maxLane = assignLanes(place);
+    // Grow the hover overlay down to cover a dropped row's glyphs (only when something
+    // stacked); CSS keeps the tighter default when nothing did.
+    hotEl.style.bottom = maxLane > 0 ? HOT_BOTTOM_STACKED_REM + "rem" : "";
     for (let i = 0; i < n; i++) {
         const t = unwrap(ticks[i] !== undefined ? ticks[i] : ticks.get && ticks.get(i));
         if (!t) continue;
@@ -572,6 +661,7 @@ function render(model) {
             clickMeta.push({ left: leftPct, cmd: cmd, arg: arg });
         }
 
+        let glyphEl = null;
         if (t.category === "fieldmod") {
             // Field-mod ticks: a hexagon glyph with the level roman numeral
             // (mirrors the in-game field-modification level badges).
@@ -581,6 +671,7 @@ function render(model) {
             num.textContent = romanize(t.level);
             hex.appendChild(num);
             mark.appendChild(hex);
+            glyphEl = hex;
         } else if (t.icon && mode === "skill_tree") {
             // Skill-tree FINAL upgrade: a framed perk glyph (diamond -- it's a major
             // 25k node) hung below the rightmost tick, matching the Next-available
@@ -595,6 +686,7 @@ function render(model) {
             fin.appendChild(frame);
             fin.appendChild(ico);
             mark.appendChild(fin);
+            glyphEl = fin;
         } else if (t.icon) {
             // Tech-tree ticks: the real in-game art (module-type glyph / framed
             // vehicle icon) as an img:// URL. Rendered as a background-image (not
@@ -605,7 +697,11 @@ function render(model) {
             img.className = "wg-tick-img";
             img.style.backgroundImage = "url('" + t.icon + "')";
             mark.appendChild(img);
+            glyphEl = img;
         }
+        // De-crowd: if this glyph would overlap a neighbour it was assigned a lower
+        // lane in the pre-pass -- drop it a row + draw a stem back to the tick.
+        applyLane(mark, glyphEl, place[i] ? place[i].lane : 0);
         ticksEl.appendChild(mark);
     }
     hotEl._wgTickMeta = tickMeta;
@@ -682,6 +778,15 @@ function renderElite(root, data, isRewards) {
     const ticks = data.ticks;
     const n = arrLen(ticks);
     const tickMeta = [];
+    // Pre-pass: stagger overlapping emblem/reward glyphs into vertical lanes (every
+    // elite tick carries a glyph). Same de-crowding as the linear bar.
+    const place = [];
+    for (let i = 0; i < n; i++) {
+        const t = unwrap(ticks[i] !== undefined ? ticks[i] : ticks.get && ticks.get(i));
+        place.push(t ? { left: pct(t.position), half: glyphHalfPct(t, data.mode) } : null);
+    }
+    const maxLane = assignLanes(place);
+    hotEl.style.bottom = maxLane > 0 ? HOT_BOTTOM_STACKED_REM + "rem" : "";
     for (let i = 0; i < n; i++) {
         const t = unwrap(ticks[i] !== undefined ? ticks[i] : ticks.get && ticks.get(i));
         if (!t) continue;
@@ -714,11 +819,13 @@ function renderElite(root, data, isRewards) {
                 img.appendChild(emblemNumber(t.position | 0, gradeFam));
             }
             mark.appendChild(img);
+            applyLane(mark, img, place[i] ? place[i].lane : 0);
         } else {
             // fallback (icon URL missing): a state-colored diamond.
             const pip = document.createElement("div");
             pip.className = "wg-tick-pip";
             mark.appendChild(pip);
+            applyLane(mark, pip, place[i] ? place[i].lane : 0);
         }
         ticksEl.appendChild(mark);
     }

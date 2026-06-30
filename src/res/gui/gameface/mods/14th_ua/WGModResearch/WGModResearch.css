@@ -357,6 +357,30 @@
     opacity: 0.75;
 }
 
+/* De-crowding stem: when a glyph is staggered down a lane (overlapping
+   neighbours), a thin vertical line connects the tick to its dropped glyph so the
+   association stays clear. Drawn only for lane > 0; height is set inline per lane.
+   Centered on the tick, hung from the bottom of the ticks layer (top:100% of the
+   tick mark), faint so it doesn't compete with the glyph. */
+#wgmod-root .wg-tick-stem {
+    position: absolute;
+    /* Pin BOTH edges to the parent tick (left:0/right:0) instead of centering on a
+       computed point: the tick's width/margin vary by state (aff 2rem/-1rem,
+       locked 1.5rem/-0.75rem, base 1rem/-0.5rem) and at 4K the fractional-rem
+       widths/margins don't round to perfectly cancelling pixels, so the visible
+       line's centre sits ~1px off `leftPct`. Any independently-centred stem
+       (margin-left OR translateX) then disagrees by that pixel -- invisible on a
+       wide glyph, glaring on a hairline. Sharing the tick's exact box makes the
+       stem inherit the same width + centre + rounding, so it can never drift. The
+       stem reads as a faint downward extension of the tick line. */
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: rgba(178, 175, 171, 0.45);
+    pointer-events: none;
+    filter: drop-shadow(0 0 1rem rgba(0, 0, 0, 0.7));
+}
+
 /* Category icon (real in-game art) hangs centered below each tick. Rendered via
    background-size:contain so the engine scales the source to fit the box while
    preserving aspect (Gameface clips an <img> instead of scaling it). One box

@@ -4,24 +4,6 @@ Recorded ideas for the mod. Entries are deleted once implemented.
 
 ## Open
 
-### Stack ticks that are too close together
-When ticks crowd together (positions too near each other to read/click), stack them
-instead of overlapping — so each stays legible and clickable.
-
-### Transitions / animations (if possible)
-Add smooth CSS transitions for state changes — fill growth, hover scaling, show/hide,
-mode switches — instead of hard cuts. Subject to what Gameface supports (some CSS is
-clipped/dropped); confirm feasibility before relying on it.
-
-### Enlarge ticks on hover
-On hover, scale up the bar's ticks for emphasis/affordance, matching the hover
-behavior already used for the tier-XI progression (skill-tree) chips/upgrades.
-
-### Prepare for release on wgmods.net
-Get the mod ready for publishing on the official WG mods portal (wgmods.net): whatever
-the portal requires — listing/description, compatibility info, packaging — plus
-**screenshots** of the bar in-game (to be taken by the author) for the listing.
-
 ### Draggable bar position (feasibility unknown)
 Let the user drag the bar to reposition it, to avoid overlap/conflicts with other
 mods' UI. Persist the dragged position (ties into the settings system / "bar position"
