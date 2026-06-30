@@ -1,7 +1,8 @@
 # Windows installer
 
 A one-double-click `setup.exe` (built with [Inno Setup](https://jrsoftware.org/isinfo.php)) that
-installs the Research Progress Bar mod and its **OpenWG GameFace** dependency.
+installs the Research Progress Bar mod and its dependencies — **OpenWG GameFace**
+(required) and **ModsSettingsAPI** (for the in-game settings panel).
 
 ## What the installer does for end users
 
@@ -14,23 +15,34 @@ installs the Research Progress Bar mod and its **OpenWG GameFace** dependency.
    `net.openwg.gameface*.wotmod` (so it won't duplicate a copy the user already has
    via ModsList, Aslain, etc.). If absent, it copies the bundled
    `net.openwg.gameface_1.1.6.wotmod` in.
-4. **Cleans + installs the mod** — removes older `com.drizzer14.wgmod_*.wotmod`
+4. **Installs ModsSettingsAPI only if missing** — recursively checks for any
+   `*modssettingsapi*.wotmod` (matches the izeberg or Aslain builds many packs
+   already ship). If absent, it copies the bundled
+   `izeberg.modssettingsapi_1.7.0.wotmod` in. This powers the in-game settings panel;
+   the bar still works without it (it just falls back to its default visibility).
+5. **Cleans + installs the mod** — removes older `com.drizzer14.wgmod_*.wotmod`
    builds (and stale loose `res_mods\<version>\` leftovers that would shadow the
    package), then installs the current `.wotmod`.
-5. **Reminds** the user to fully restart the client.
+6. **Reminds** the user to fully restart the client.
 
 The installer refuses to run while `WorldOfTanks.exe` is open (file locks). On
-uninstall it removes the mod but **leaves OpenWG in place** (other mods may use it).
+uninstall it removes the mod but **leaves OpenWG and ModsSettingsAPI in place**
+(other mods may use them).
 
-## Bundled dependency
+## Bundled dependencies
 
 `vendor/net.openwg.gameface_1.1.6.wotmod` is the official OpenWG GameFace build
 (from <https://gitlab.com/openwg/wot.gameface>), bundled because its GitLab release
 asset is not directly downloadable by an automated client (login/Cloudflare gated).
 OpenWG is open source and is routinely redistributed in WoT mod packs.
 
-To update it: download the newer `.wotmod` from the OpenWG releases page, replace the
-file in `vendor/`, and bump the `OpenWgWotmod` define in `wgmod-setup.iss`.
+`vendor/izeberg.modssettingsapi_1.7.0.wotmod` is the ModsSettingsAPI library mod
+(izeberg), the de-facto standard in-game settings framework, also bundled in modpacks
+like Aslain's. It is redistributed the same way.
+
+To update either: download the newer `.wotmod`, replace the file in `vendor/`, and
+bump the matching `OpenWgWotmod` / `MsaWotmod` define in `wgmod-setup.iss`
+(and the `$Msa` path in `build_installer.ps1` if its filename changed).
 
 ## Building the installer
 

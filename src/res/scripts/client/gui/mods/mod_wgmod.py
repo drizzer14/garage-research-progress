@@ -19,6 +19,11 @@ def _install():
     from gui.impl.lobby.hangar.presenters.hangar_vehicle_params_presenter import (
         HangarVehicleParamsPresenter as P)
     from wgmod_research.bridge import gameface_bridge as bridge
+    from wgmod_research.bridge import mod_settings
+
+    # Register our settings panel with ModsSettingsAPI (optional dependency; guarded
+    # and idempotent). If MSA hasn't loaded yet, bridge.attach() retries on first mount.
+    mod_settings.init()
 
     if getattr(P, "_wgmod_patched", False):
         return

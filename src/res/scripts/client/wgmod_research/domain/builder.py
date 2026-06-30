@@ -22,6 +22,21 @@ def _max_pos(ticks, default):
     return max([tk.xp_position for tk in ticks]) if ticks else default
 
 
+def bar_visible(overlay_closed, hide_always, hide_when_complete, mode):
+    """Whether the bar should render, combining the engine state (a tank-setup
+    overlay open -> overlay_closed is False) with the two user settings. Pure and
+    engine-free so it unit-tests on plain inputs.
+
+    - hide_always: master switch -> never show.
+    - hide_when_complete: hide only on fully-progressed vehicles (Mode.COMPLETE).
+    - otherwise follow the overlay state (hidden while a setup overlay is open)."""
+    if hide_always:
+        return False
+    if hide_when_complete and mode == t.Mode.COMPLETE:
+        return False
+    return overlay_closed
+
+
 def build_model(snapshot):
     fill_vehicle = snapshot.vehicle_xp
     fill_free = snapshot.free_xp

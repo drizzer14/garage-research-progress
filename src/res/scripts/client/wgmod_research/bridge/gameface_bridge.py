@@ -20,7 +20,8 @@ from skeletons.gui.shared import IItemsCache
 
 from wgmod_research.adapter import engine_adapter
 from wgmod_research.adapter import actions
-from wgmod_research.domain.builder import build_model
+from wgmod_research.domain.builder import build_model, bar_visible
+from wgmod_research.bridge import mod_settings
 import openwg_gameface
 
 WIDGET_NAME = "WGModResearch"
@@ -450,6 +451,10 @@ def attach(host_vm):
             modules=[COUI + "/WGModResearch.js"])
         rvm = ResearchVM()
         _connect_commands(rvm)
+        # Retry settings registration here: by the first hangar mount every mod
+        # (including ModsSettingsAPI) is loaded, so the import that may have failed
+        # at entry-point install time now succeeds. Idempotent once registered.
+        mod_settings.init()
         host_vm._addViewModelProperty(DATA_PROP, rvm)
         _active = (host_vm, rvm)
         return rvm
@@ -479,7 +484,8 @@ def push(rvm, host_vm=None):
         LOG_NOTE("[wgmod] push mode=%s ticks=%d fillV=%d fillF=%d" % (
             model.mode, len(model.ticks), model.fill_vehicle, model.fill_free))
         with rvm.transaction() as tx:
-            tx.setVisible(_bar_visible())
+            tx.setVisible(bar_visible(_bar_visible(), mod_settings.hide_always(),
+                                      mod_settings.hide_when_complete(), model.mode))
             tx.setMode(model.mode)
             tx.setScaleMin(model.scale_min)
             tx.setScaleMax(model.scale_max)

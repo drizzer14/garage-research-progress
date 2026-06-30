@@ -16,6 +16,7 @@
 #define ModVersion   "0.1.2"
 #define ModWotmod    "com.drizzer14.wgmod_0.1.2.wotmod"
 #define OpenWgWotmod "net.openwg.gameface_1.1.6.wotmod"
+#define MsaWotmod    "izeberg.modssettingsapi_1.7.0.wotmod"
 
 [Setup]
 AppId={{8B6A1C3E-9D42-4F7A-BE1C-0D2F7C4A9E51}
@@ -45,6 +46,9 @@ Source: "..\dist\{#ModWotmod}"; DestDir: "{code:GetModsVersionDir}"; Flags: igno
 ; Bundled OpenWG dependency -> only copied when not already installed, and never
 ; removed on uninstall (other GameFace mods may depend on it).
 Source: "vendor\{#OpenWgWotmod}"; DestDir: "{code:GetModsVersionDir}"; Flags: ignoreversion uninsneveruninstall; Check: NeedOpenWg
+; Bundled ModsSettingsAPI dependency (provides the in-game settings panel). Same
+; policy: only copied when absent, never removed on uninstall (shared by many mods).
+Source: "vendor\{#MsaWotmod}"; DestDir: "{code:GetModsVersionDir}"; Flags: ignoreversion uninsneveruninstall; Check: NeedMsa
 
 [Messages]
 ; Repurpose the "Select Destination Location" page for picking the WoT root.
@@ -207,6 +211,48 @@ end;
 function NeedOpenWg(): Boolean;
 begin
   Result := not FindOpenWgIn(GetModsVersionDir(''));
+end;
+
+{ Recursive search for *.modssettingsapi*.wotmod under a directory (matches both
+  izeberg.modssettingsapi* and aslain.modssettingsapi* and any other variant). }
+function FindMsaIn(Dir: string): Boolean;
+var
+  FR: TFindRec;
+begin
+  Result := False;
+  { files in this dir }
+  if FindFirst(Dir + '\*modssettingsapi*.wotmod', FR) then
+  begin
+    try
+      Result := True;
+      Exit;
+    finally
+      FindClose(FR);
+    end;
+  end;
+  { recurse into subdirs }
+  if FindFirst(Dir + '\*', FR) then
+  begin
+    try
+      repeat
+        if (FR.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+          if (FR.Name <> '.') and (FR.Name <> '..') then
+            if FindMsaIn(Dir + '\' + FR.Name) then
+            begin
+              Result := True;
+              Exit;
+            end;
+      until not FindNext(FR);
+    finally
+      FindClose(FR);
+    end;
+  end;
+end;
+
+{ [Files] Check: copy bundled ModsSettingsAPI only when none is already present. }
+function NeedMsa(): Boolean;
+begin
+  Result := not FindMsaIn(GetModsVersionDir(''));
 end;
 
 { ---- WoT-running guard (file locks) -------------------------------------- }

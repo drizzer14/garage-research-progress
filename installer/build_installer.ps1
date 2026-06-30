@@ -23,6 +23,7 @@ $RepoRoot     = Split-Path -Parent $InstallerDir
 $Iss          = Join-Path $InstallerDir 'wgmod-setup.iss'
 $ModWotmod    = Join-Path $RepoRoot 'dist\com.drizzer14.wgmod_0.1.2.wotmod'
 $OpenWg       = Join-Path $InstallerDir 'vendor\net.openwg.gameface_1.1.6.wotmod'
+$Msa          = Join-Path $InstallerDir 'vendor\izeberg.modssettingsapi_1.7.0.wotmod'
 
 function Find-ISCC {
     $candidates = @(
@@ -43,6 +44,9 @@ if (-not (Test-Path $ModWotmod)) {
 if (-not (Test-Path $OpenWg)) {
     throw "Bundled OpenWG dependency not found: $OpenWg"
 }
+if (-not (Test-Path $Msa)) {
+    throw "Bundled ModsSettingsAPI dependency not found: $Msa"
+}
 $iscc = Find-ISCC
 if (-not $iscc) {
     throw "ISCC.exe (Inno Setup compiler) not found. Install it:`n    winget install -e --id JRSoftware.InnoSetup"
@@ -51,6 +55,7 @@ if (-not $iscc) {
 Write-Host "ISCC:       $iscc"
 Write-Host "Mod:        $ModWotmod"
 Write-Host "OpenWG:     $OpenWg"
+Write-Host "MSA:        $Msa"
 Write-Host "Script:     $Iss"
 Write-Host ''
 

@@ -4,14 +4,18 @@ Adds a Garage progress bar that shows the selected vehicle's progression — tec
 research, Field Modifications, Elite Levels (prestige) grades + tier-XI reward track,
 and tier-XI vehicle skill-tree upgrades — using the game's own icons and live updates.
 
-Target client: **WoT EU 2.3.0.1**. Hard dependency: **OpenWG GameFace**.
+Settings live in the game's **Settings → Mods** panel (via ModsSettingsAPI): hide the
+bar completely, or hide it only on fully-progressed vehicles.
+
+Target client: **WoT EU 2.3.0.1**. Hard dependency: **OpenWG GameFace**. Optional:
+**ModsSettingsAPI** (for the settings panel — without it the bar shows everywhere).
 
 ## For players (installing)
 
 **Easiest: run the installer.** `dist/ResearchProgressBar-Setup-<version>.exe` finds
-your World of Tanks folder, installs the **OpenWG GameFace** dependency for you only
-if it's missing, and drops the mod into `mods\<version>\` (close the game first). See
-[`installer/README.md`](./installer/README.md).
+your World of Tanks folder, installs the **OpenWG GameFace** and **ModsSettingsAPI**
+dependencies for you only if they're missing, and drops the mod into `mods\<version>\`
+(close the game first). See [`installer/README.md`](./installer/README.md).
 
 Prefer to do it by hand? See **[`INSTALL.md`](./INSTALL.md)** — the raw mod is built to
 `dist/com.drizzer14.wgmod_<version>.wotmod` and requires OpenWG GameFace installed
@@ -37,7 +41,7 @@ build/
 installer/
   wgmod-setup.iss      # Inno Setup script -> dist/ResearchProgressBar-Setup-<version>.exe
   build_installer.ps1  # locate ISCC + compile the installer
-  vendor/              # bundled OpenWG GameFace .wotmod (installed only if missing)
+  vendor/              # bundled OpenWG GameFace + ModsSettingsAPI .wotmods (installed only if missing)
 tests/               # pytest (run with Python 3.13) for the domain layer
 tools/dev/           # debug REPL server/client (NOT shipped) + dev notes
 dist/                # build output (gitignored)
