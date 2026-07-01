@@ -27,6 +27,22 @@ def _items_cache():
     return dependency.instance(IItemsCache)
 
 
+def is_color_blind():
+    """True when WoT's own color-blind mode is enabled (Settings -> the 'isColorBlind'
+    graphics option). Read-only; the bridge pushes this to the widget so it can swap to
+    a color-blind-safe palette. Imports are local and the whole read is guarded ->
+    False (fail to the standard palette) so a settings-API change can never raise into
+    the bridge. Symbol verified against the EU 2.3 decompiled client
+    (account_helpers/settings_core)."""
+    try:
+        from skeletons.account_helpers.settings_core import ISettingsCore
+        from account_helpers.settings_core.settings_constants import GRAPHICS
+        return bool(dependency.instance(ISettingsCore).getSetting(GRAPHICS.COLOR_BLIND))
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+        return False
+
+
 def build_snapshot():
     """Read the selected vehicle into a VehicleSnapshot, or None if unavailable."""
     if not g_currentVehicle.isPresent():

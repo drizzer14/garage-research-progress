@@ -294,6 +294,42 @@
     background: #9160d0;
     opacity: 1;
 }
+
+/* ============================================================================
+   COLOR-BLIND palette (.wg-colorblind, mirrors WoT's own "isColorBlind" mode).
+   Adapts WG's color-blind scheme from gui/gui_colors.xml: red is removed from the
+   meaning-carrying palette and the safe accents are green / blue / orange / purple
+   (amber/gold -> orange). Only the hue-encoded, meaning-carrying colors change;
+   neutral gray/tan fills, lightness-encoded tick + pip states, and all shadows are
+   already color-blind-safe and stay as-is. Each selector adds .wg-colorblind on top
+   of the mode class it overrides, so it outranks the standard rule above. */
+
+/* skill_tree fill: steel blue -> WG color-blind blue (128 192 255). */
+#wgmod-root.wg-colorblind.wg-skill .wg-fill-veh {
+    background: #80c0ff;
+}
+/* COMPLETE fill: green stays green (WG keeps green); aligned to WG's ally green. */
+#wgmod-root.wg-colorblind.wg-complete .wg-fill-veh {
+    background: #61bf25;
+}
+/* ELITE grade-band fill: prestige gold -> WG color-blind orange (255 170 76). */
+#wgmod-root.wg-colorblind.wg-elite .wg-fill-veh {
+    background: #ffaa4c;
+}
+/* ELITE_REWARDS fill: rarity purple -> WG color-blind purple (192 128 255). */
+#wgmod-root.wg-colorblind.wg-elite.wg-elite-rewards .wg-fill-veh {
+    background: #c080ff;
+}
+/* Elite "achieved" grade pip: gold -> orange, to match the elite fill family. */
+#wgmod-root.wg-colorblind .wg-state-achieved .wg-tick-pip {
+    background: #ffaa4c;
+}
+/* Tooltip shortfall alert: our only red -> orange (still reads as "warning", and the
+   line also spells out the missing XP, so meaning survives without the red hue). */
+#wgmod-root.wg-colorblind .wg-tip-short {
+    color: #ffaa4c;
+}
+/* ============================================================================ */
 /* Elite modes show the class+elite badge as the category icon (like COMPLETE):
    it already carries a baked-in shadow and more internal padding. */
 #wgmod-root.wg-elite .wg-cat-icon {

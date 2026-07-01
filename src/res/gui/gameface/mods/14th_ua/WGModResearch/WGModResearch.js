@@ -491,6 +491,14 @@ function applyLane(mark, glyphEl, lane) {
     mark.appendChild(stem);
 }
 
+// Root modifier class that mirrors WoT's color-blind mode. Appended to every root
+// className assignment (all render branches) so the CSS .wg-colorblind overrides swap
+// the meaning-carrying fills/pips to a color-blind-safe palette. Fail-open: absent flag
+// (older Python build) -> standard palette.
+function cbClass(data) {
+    return data && data.colorBlind ? " wg-colorblind" : "";
+}
+
 function render(model) {
     const root = ensureRoot();
     const label = root.querySelector(".wg-label");
@@ -619,7 +627,7 @@ function render(model) {
     // below, so an in-place refresh just updates the data under the cursor.
 
     if (mode === "complete" || sMax <= sMin) {
-        root.className = "wg-complete";
+        root.className = "wg-complete" + cbClass(data);
         label.textContent = "Fully researched";
         setCatIcon(catIcon, eliteIcon(data.vehicleClass));  // class + elite badge
         vehEl.style.left = "0%";
@@ -637,7 +645,7 @@ function render(model) {
     // upgrade carrying its icon on the rightmost tick. No per-node tooltips (the
     // tick loop below skips hover wiring for this mode). wg-skill gives the fill its
     // own steel-blue tone (.wg-skill .wg-fill-veh in CSS), distinct from tech-tree.
-    root.className = mode === "skill_tree" ? "wg-skill" : "";
+    root.className = (mode === "skill_tree" ? "wg-skill" : "") + cbClass(data);
 
     label.textContent = mode === "skill_tree" ? "Upgrades"
         : mode === "field_mods" ? "Field Modifications" : "Research";
@@ -796,7 +804,7 @@ function eliteTooltipHtml(t, isRewards, combatXp) {
 // the bar's track + hover overlay but with a single fill segment, a combat-XP
 // readout, an "Elite Lvl N/350" counter, and grade-pip / reward-thumbnail ticks.
 function renderElite(root, data, isRewards) {
-    root.className = "wg-elite" + (isRewards ? " wg-elite-rewards" : "");
+    root.className = "wg-elite" + (isRewards ? " wg-elite-rewards" : "") + cbClass(data);
     const label = root.querySelector(".wg-label");
     const catIcon = root.querySelector(".wg-cat-icon");
     const upgradesEl = root.querySelector(".wg-upgrades");

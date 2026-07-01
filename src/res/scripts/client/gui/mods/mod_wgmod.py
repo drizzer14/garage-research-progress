@@ -44,6 +44,7 @@ def _install():
             bridge.install_loadout_listener()
             bridge.install_lobby_state_listener()
             bridge.install_stats_listener()
+            bridge.install_colorblind_listener()
             rvm = bridge.attach(self.getViewModel())
             bridge.push(rvm, host_vm=self.getViewModel())
         except Exception:
@@ -58,6 +59,7 @@ def _install():
     bridge.install_loadout_listener()
     bridge.install_lobby_state_listener()
     bridge.install_stats_listener()
+    bridge.install_colorblind_listener()
     LOG_NOTE("[%s] v%s installed (sub-view inject + data)" % (MOD_NAME, MOD_VERSION))
 
 

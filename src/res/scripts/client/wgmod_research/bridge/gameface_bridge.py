@@ -57,6 +57,12 @@ _lobby_state_listener = None
 # idempotent membership check for symmetry and hot-reload safety.
 _stats_listener = None
 
+# Our handler for the player toggling WoT's color-blind mode. settingsCore is a
+# long-lived DI singleton (event list not torn down on battle exit), so like the
+# stats listener re-arming on mount is unnecessary but harmless; kept for symmetry
+# and hot-reload safety.
+_colorblind_listener = None
+
 # Set while a coalesced refresh is already queued for the next tick, so a burst of
 # onSyncCompleted fires (one server action often triggers several) collapses to a
 # single deferred refresh(). See _schedule_refresh.
@@ -93,6 +99,19 @@ def _on_lobby_state_changed(*args, **kwargs):
     # hides when we leave the plain garage and shows again when we return.
     try:
         refresh()
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
+def _on_settings_changed(diff):
+    # settingsCore.onSettingsChanged(diff): a dict of the settings that changed. Only
+    # re-push when the color-blind flag is among them, so we don't refresh on every
+    # unrelated settings tweak. Guarded and fail-open (refresh if the diff is
+    # unreadable) so a settings-API shape change can't silently freeze the palette.
+    try:
+        from account_helpers.settings_core.settings_constants import GRAPHICS
+        if diff is None or GRAPHICS.COLOR_BLIND in diff:
+            refresh()
     except Exception:
         LOG_CURRENT_EXCEPTION()
 
@@ -268,6 +287,24 @@ def install_stats_listener():
         LOG_CURRENT_EXCEPTION()
 
 
+def install_colorblind_listener():
+    """Ensure our handler is subscribed to settings changes, so the bar re-colors live
+    when the player toggles WoT's color-blind mode. Self-healing and idempotent, same
+    as the other installers -- safe to call on every mount. Guarded: if settingsCore
+    isn't available yet the subscribe is skipped and retried on the next mount."""
+    global _colorblind_listener
+    if _colorblind_listener is None:
+        _colorblind_listener = _on_settings_changed
+    try:
+        from skeletons.account_helpers.settings_core import ISettingsCore
+        core = dependency.instance(ISettingsCore)
+        if _colorblind_listener not in core.onSettingsChanged:
+            core.onSettingsChanged += _colorblind_listener
+            LOG_NOTE("[wgmod] colorblind listener (re)armed")
+    except Exception:
+        LOG_CURRENT_EXCEPTION()
+
+
 # --- Reverse channel: handlers for JS click commands -------------------------
 # The widget JS invokes the ResearchVM commands when a clickable tick is clicked.
 # Each handler reads the tick identity Wulf delivered and delegates to the
@@ -439,7 +476,7 @@ class UpgradeVM(ViewModel):
 
 
 class ResearchVM(ViewModel):
-    def __init__(self, properties=17, commands=3):
+    def __init__(self, properties=18, commands=3):
         super(ResearchVM, self).__init__(properties=properties, commands=commands)
 
     def _initialize(self):
@@ -461,6 +498,7 @@ class ResearchVM(ViewModel):
         self._addBoolProperty("visible", True)        # 14 (false hides the bar)
         self._addArrayProperty("availUpgrades", Array())  # 15 ([UpgradeVM] -> chips)
         self._addNumberProperty("spendableXp", 0)    # 16 (vehicle XP + free XP, for affordability)
+        self._addBoolProperty("colorBlind", False)   # 17 (mirror WoT's color-blind mode)
         # Reverse channel: JS click handlers invoke these commands. Each returns a
         # command object that connect_commands() wires to a Python handler. Wulf
         # delivers the JS-supplied argument(s) to those handlers.
@@ -519,6 +557,9 @@ class ResearchVM(ViewModel):
     def setSpendableXp(self, v):
         self._setNumber(16, v)
 
+    def setColorBlind(self, v):
+        self._setBool(17, v)
+
     @staticmethod
     def getTicksType():
         return TickVM
@@ -575,6 +616,7 @@ def push(rvm, host_vm=None):
             tx.setVisible(bar_visible(_bar_visible(), mod_settings.hide_always(),
                                       mod_settings.hide_when_complete(), model.mode,
                                       _in_garage()))
+            tx.setColorBlind(engine_adapter.is_color_blind())
             tx.setMode(model.mode)
             tx.setScaleMin(model.scale_min)
             tx.setScaleMax(model.scale_max)
